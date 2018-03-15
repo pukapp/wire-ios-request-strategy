@@ -18,6 +18,7 @@
 
 
 import Foundation
+import WireDataModel
 
 public final class AssetRequestFactory : NSObject {
     
@@ -28,6 +29,14 @@ public final class AssetRequestFactory : NSObject {
         case persistent = "persistent"
         case eternal = "eternal"
         case volatile = "volatile"
+    }
+
+    public static func defaultRetention(for user: ZMUser, in conversation: ZMConversation) -> Retention {
+        if user.isTeamMember || conversation.team != nil {
+            return .eternal
+        } else {
+            return .persistent
+        }
     }
 
     public func backgroundUpstreamRequestForAsset(message: ZMAssetClientMessage, withData data: Data, shareable: Bool = true, retention: Retention = .persistent) -> ZMTransportRequest? {
