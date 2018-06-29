@@ -1,1 +1,2 @@
 github "wireapp/wire-ios-data-model" ~> 111.0
+github "khanlou/Promise" ~> 2.0
