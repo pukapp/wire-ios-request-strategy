@@ -126,11 +126,8 @@ extension FetchingClientRequestStrategy: ZMRemoteIdentifierObjectTranscoder {
             $0.deleteClientAndEndSession()
         }
 
-        for client in clients {
-            if client.hasSessionWithSelfClient { continue }
-            // Add clients without a session to missed clients
-            newClients.insert(client)
-        }
+        // Add clients without a session to missed clients
+        newClients.formUnion(clients.filter { !$0.hasSessionWithSelfClient })
 
         guard newClients.count > 0 else { return }
         selfClient.missesClients(Set(newClients))
