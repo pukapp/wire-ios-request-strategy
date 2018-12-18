@@ -29,6 +29,8 @@ public final class AssetRequestFactory : NSObject {
         /// after a certain, long-ish amount of time.
         case expiring = "expiring"
         
+        // 旧版本客户端的文件上传参数
+        case persistent = "persistent"
         /// The asset will never be removed from the backend storage unless the
         /// user requests the deletion explicitly. Used for profile pictures.
         case eternal = "eternal"
@@ -86,7 +88,7 @@ public extension AssetRequestFactory.Retention {
         if ZMUser.selfUser(in: conversation.managedObjectContext!).hasTeam || conversation.hasTeam || conversation.containsTeamUser {
             self = .eternalInfrequentAccess
         } else {
-            self = .expiring
+            self = .persistent
         }
     }
 }
