@@ -135,7 +135,7 @@ extension ClientMessageTranscoder {
     
     func insertMessage(from event: ZMUpdateEvent, prefetchResult: ZMFetchRequestBatchResult?) {
         switch event.type {
-        case .conversationClientMessageAdd, .conversationOtrMessageAdd, .conversationOtrAssetAdd:
+        case .conversationClientMessageAdd, .conversationOtrMessageAdd, .conversationOtrAssetAdd, .conversationWalletNotify:
             
             // process generic message first, b/c if there is no updateResult, then
             // a the event from a deleted message wouldn't delete the notification.
