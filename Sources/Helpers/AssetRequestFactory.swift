@@ -88,7 +88,7 @@ public extension AssetRequestFactory.Retention {
         if ZMUser.selfUser(in: conversation.managedObjectContext!).hasTeam || conversation.hasTeam || conversation.containsTeamUser {
             self = .eternalInfrequentAccess
         } else {
-            self = .persistent
+            self = .expiring
         }
     }
 }
