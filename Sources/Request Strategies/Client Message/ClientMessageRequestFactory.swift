@@ -30,7 +30,11 @@ public final class ClientMessageRequestFactory: NSObject {
     let octetStreamContentType = "application/octet-stream"
 
     public func upstreamRequestForMessage(_ message: ZMClientMessage) -> ZMTransportRequest? {
-        return upstreamRequestForEncryptedClientMessage(message, forConversationWithId: message.conversation!.remoteIdentifier!);
+        guard let cid = message.conversation?.remoteIdentifier else { return nil }
+        if message.isFromHugeGroup {
+            return upstreamRequestForUnencryptedClientMessage(message, forConversationWithId: cid)
+        }
+        return upstreamRequestForEncryptedClientMessage(message, forConversationWithId: cid);
     }
 
     public func upstreamRequestForMessage(_ message: EncryptedPayloadGenerator, forConversationWithId conversationId: UUID) -> ZMTransportRequest? {
@@ -45,6 +49,17 @@ public final class ClientMessageRequestFactory: NSObject {
         let path = originalPath.pathWithMissingClientStrategy(strategy: dataAndMissingClientStrategy.strategy)
         let request = ZMTransportRequest(path: path, method: .methodPOST, binaryData: dataAndMissingClientStrategy.data, type: protobufContentType, contentDisposition: nil)
         request.addContentDebugInformation(message.debugInfo)
+        return request
+    }
+
+    public func upstreamRequestForUnencryptedClientMessage(_ message: UnencryptedMessagePayloadGenerator, forConversationWithId conversationId: UUID) -> ZMTransportRequest? {
+        let originalPath =  "/" + ["conversations", conversationId.transportString(), "bgp", "messages"].joined(separator: "/")
+        guard let payload = message.unencryptedMessagePayload() else {
+            return nil
+        }
+        let path = originalPath.pathWithMissingClientStrategy(strategy: .doNotIgnoreAnyMissingClient)
+        let request = ZMTransportRequest(path: path, method: .methodPOST, payload: payload as ZMTransportData)
+        request.addContentDebugInformation(message.unencryptedMessageDebugInfo)
         return request
     }
     

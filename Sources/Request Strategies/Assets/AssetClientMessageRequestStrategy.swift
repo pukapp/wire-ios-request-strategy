@@ -84,7 +84,6 @@ extension AssetClientMessageRequestStrategy: ZMUpstreamTranscoder {
 
     public func request(forUpdating managedObject: ZMManagedObject, forKeys keys: Set<String>) -> ZMUpstreamRequest? {
         guard let message = managedObject as? ZMAssetClientMessage, let conversation = message.conversation else { return nil }
-        guard let request = requestFactory.upstreamRequestForMessage(message, forConversationWithId: conversation.remoteIdentifier!) else { fatal("Unable to generate request for \(message.privateDescription)") }
         requireInternal(true == message.sender?.isSelfUser, "Trying to send message from sender other than self: \(message.nonce?.uuidString ?? "nil nonce")")
         
         // We need to flush the encrypted payloads cache, since the client is online now (request succeeded).
@@ -97,10 +96,18 @@ extension AssetClientMessageRequestStrategy: ZMUpstreamTranscoder {
                 session.purgeEncryptedPayloadCache()
             }
         }
-        
-        request.add(completionHandler)
-        
-        return ZMUpstreamRequest(keys: [#keyPath(ZMAssetClientMessage.uploadState)], transportRequest: request)
+
+        if message.isFromHugeGroup {
+            guard let request = requestFactory.upstreamRequestForUnencryptedClientMessage(message, forConversationWithId: conversation.remoteIdentifier!) else {
+                fatal("Unable to generate request for \(message.privateDescription)")
+            }
+            request.add(completionHandler)
+            return ZMUpstreamRequest(keys: [#keyPath(ZMAssetClientMessage.uploadState)], transportRequest: request)
+        } else {
+             guard let request = requestFactory.upstreamRequestForMessage(message, forConversationWithId: conversation.remoteIdentifier!) else { fatal("Unable to generate request for \(message.privateDescription)") }
+            request.add(completionHandler)
+            return ZMUpstreamRequest(keys: [#keyPath(ZMAssetClientMessage.uploadState)], transportRequest: request)
+        }
     }
 
     public func updateUpdatedObject(_ managedObject: ZMManagedObject, requestUserInfo: [AnyHashable : Any]? = nil, response: ZMTransportResponse, keysToParse: Set<String>) -> Bool {
