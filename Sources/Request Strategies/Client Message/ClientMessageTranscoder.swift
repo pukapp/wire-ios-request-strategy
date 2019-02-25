@@ -141,7 +141,11 @@ extension ClientMessageTranscoder {
     
     func insertMessage(from event: ZMUpdateEvent, prefetchResult: ZMFetchRequestBatchResult?) {
         switch event.type {
-        case .conversationClientMessageAdd, .conversationOtrMessageAdd, .conversationOtrAssetAdd, .conversationWalletNotify:
+        case .conversationClientMessageAdd,
+             .conversationOtrMessageAdd,
+             .conversationOtrAssetAdd,
+             .conversationWalletNotify,
+             .conversationBgpMessageAdd:
             
             // process generic message first, b/c if there is no updateResult, then
             // a the event from a deleted message wouldn't delete the notification.
@@ -267,7 +271,10 @@ extension ClientMessageTranscoder : ZMEventConsumer {
     public func messageNoncesToPrefetch(toProcessEvents events: [ZMUpdateEvent]) -> Set<UUID> {
         return Set(events.compactMap {
             switch $0.type {
-            case .conversationClientMessageAdd, .conversationOtrMessageAdd, .conversationOtrAssetAdd:
+            case .conversationClientMessageAdd,
+                 .conversationOtrMessageAdd,
+                 .conversationOtrAssetAdd,
+                 .conversationBgpMessageAdd:
                 return $0.messageNonce()
             default:
                 return nil
@@ -278,7 +285,10 @@ extension ClientMessageTranscoder : ZMEventConsumer {
     private func nonces(for updateEvents: [ZMUpdateEvent]) -> [UpdateEventWithNonce] {
         return updateEvents.compactMap {
             switch $0.type {
-            case .conversationClientMessageAdd, .conversationOtrMessageAdd, .conversationOtrAssetAdd:
+            case .conversationClientMessageAdd,
+                 .conversationOtrMessageAdd,
+                 .conversationOtrAssetAdd,
+                 .conversationBgpMessageAdd:
                 if let nonce = $0.messageNonce() {
                     return UpdateEventWithNonce(event: $0, nonce: nonce)
                 }
