@@ -83,7 +83,10 @@ extension AssetClientMessageRequestStrategy: ZMUpstreamTranscoder {
     }
 
     public func request(forUpdating managedObject: ZMManagedObject, forKeys keys: Set<String>) -> ZMUpstreamRequest? {
-        guard let message = managedObject as? ZMAssetClientMessage, let conversation = message.conversation else { return nil }
+        guard
+            let message = managedObject as? ZMAssetClientMessage,
+            let conversation = message.conversation,
+            let cid = conversation.remoteIdentifier else { return nil }
         requireInternal(true == message.sender?.isSelfUser, "Trying to send message from sender other than self: \(message.nonce?.uuidString ?? "nil nonce")")
         
         // We need to flush the encrypted payloads cache, since the client is online now (request succeeded).
@@ -97,17 +100,13 @@ extension AssetClientMessageRequestStrategy: ZMUpstreamTranscoder {
             }
         }
 
-        if message.isFromHugeGroup {
-            guard let request = requestFactory.upstreamRequestForUnencryptedClientMessage(message, forConversationWithId: conversation.remoteIdentifier!) else {
-                fatal("Unable to generate request for \(message.privateDescription)")
-            }
-            request.add(completionHandler)
-            return ZMUpstreamRequest(keys: [#keyPath(ZMAssetClientMessage.uploadState)], transportRequest: request)
-        } else {
-             guard let request = requestFactory.upstreamRequestForMessage(message, forConversationWithId: conversation.remoteIdentifier!) else { fatal("Unable to generate request for \(message.privateDescription)") }
-            request.add(completionHandler)
-            return ZMUpstreamRequest(keys: [#keyPath(ZMAssetClientMessage.uploadState)], transportRequest: request)
-        }
+        let req = conversation.conversationType == .hugeGroup
+            ? requestFactory.upstreamRequestForUnencryptedClientMessage(message, forConversationWithId: cid)
+            : requestFactory.upstreamRequestForMessage(message, forConversationWithId: cid)
+
+        guard let request = req else { fatal("Unable to generate request for \(message.privateDescription)") }
+        request.add(completionHandler)
+        return ZMUpstreamRequest(keys: [#keyPath(ZMAssetClientMessage.uploadState)], transportRequest: request)
     }
 
     public func updateUpdatedObject(_ managedObject: ZMManagedObject, requestUserInfo: [AnyHashable : Any]? = nil, response: ZMTransportResponse, keysToParse: Set<String>) -> Bool {

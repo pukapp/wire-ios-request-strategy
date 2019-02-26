@@ -30,11 +30,12 @@ public final class ClientMessageRequestFactory: NSObject {
     let octetStreamContentType = "application/octet-stream"
 
     public func upstreamRequestForMessage(_ message: ZMClientMessage) -> ZMTransportRequest? {
-        guard let cid = message.conversation?.remoteIdentifier else { return nil }
-        if message.isFromHugeGroup {
-            return upstreamRequestForUnencryptedClientMessage(message, forConversationWithId: cid)
-        }
-        return upstreamRequestForEncryptedClientMessage(message, forConversationWithId: cid);
+        guard
+            let conversation = message.conversation,
+            let cid = conversation.remoteIdentifier else { return nil }
+        return conversation.conversationType == .hugeGroup
+            ? upstreamRequestForUnencryptedClientMessage(message, forConversationWithId: cid)
+            : upstreamRequestForEncryptedClientMessage(message, forConversationWithId: cid)
     }
 
     public func upstreamRequestForMessage(_ message: EncryptedPayloadGenerator, forConversationWithId conversationId: UUID) -> ZMTransportRequest? {

@@ -81,7 +81,10 @@ extension ClientMessageTranscoder: ZMUpstreamTranscoder {
     
     public func request(forInserting managedObject: ZMManagedObject, forKeys keys: Set<String>?) -> ZMUpstreamRequest? {
         
-        guard let message = managedObject as? ZMClientMessage,
+        guard
+            let message = managedObject as? ZMClientMessage,
+            let conversation = message.conversation,
+            let cid = conversation.remoteIdentifier,
             !message.isExpired else {
                 zmLog.info("Cannot create request: message = \(managedObject) message.isExpired = \((managedObject as? ZMClientMessage)?.isExpired ?? false)")
                 return nil
@@ -89,12 +92,9 @@ extension ClientMessageTranscoder: ZMUpstreamTranscoder {
         
         requireInternal(true == message.sender?.isSelfUser, "Trying to send message from sender other than self: \(message.nonce?.uuidString ?? "nil nonce")")
         
-        let request: ZMTransportRequest
-        if message.isFromHugeGroup {
-            request = self.requestFactory.upstreamRequestForUnencryptedClientMessage(message, forConversationWithId: message.conversation!.remoteIdentifier!)!
-        } else {
-            request = requestFactory.upstreamRequestForMessage(message, forConversationWithId: message.conversation!.remoteIdentifier!)!
-        }
+        let request = conversation.conversationType == .hugeGroup
+            ? requestFactory.upstreamRequestForUnencryptedClientMessage(message, forConversationWithId: cid)!
+            : requestFactory.upstreamRequestForMessage(message, forConversationWithId: cid)!
         
         // We need to flush the encrypted payloads cache, since the client is online now (request succeeded).
         let completionHandler = ZMCompletionHandler(on: self.managedObjectContext) { response in
