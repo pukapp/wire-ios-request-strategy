@@ -145,6 +145,7 @@ extension ClientMessageTranscoder {
              .conversationOtrMessageAdd,
              .conversationOtrAssetAdd,
              .conversationWalletNotify,
+             .conversationMemberJoinask,
              .conversationBgpMessageAdd:
             
             // process generic message first, b/c if there is no updateResult, then
