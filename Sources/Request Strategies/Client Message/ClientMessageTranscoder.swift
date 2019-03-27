@@ -91,7 +91,7 @@ extension ClientMessageTranscoder: ZMUpstreamTranscoder {
         }
         
         requireInternal(true == message.sender?.isSelfUser, "Trying to send message from sender other than self: \(message.nonce?.uuidString ?? "nil nonce")")
-        
+       
         let request = conversation.conversationType == .hugeGroup
             ? requestFactory.upstreamRequestForUnencryptedClientMessage(message, forConversationWithId: cid)!
             : requestFactory.upstreamRequestForMessage(message, forConversationWithId: cid)!
@@ -161,6 +161,8 @@ extension ClientMessageTranscoder {
             }
             
             updateResult.message?.markAsSent()
+            
+            print("---updateResult----\(String(describing: updateResult.message?.description))------\(#line)");
                         
             if type(of: self.applicationStatus!.deliveryConfirmation).sendDeliveryReceipts {
                 if updateResult.needsConfirmation {

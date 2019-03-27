@@ -94,20 +94,43 @@ static NSString* ZMLogTag = @"Network";
 - (NSFetchRequest *)fetchRequestForTrackedObjects
 {
     Class moClass = NSClassFromString(self.trackedEntity.managedObjectClassName);
-    return [moClass sortedFetchRequestWithPredicate:self.insertPredicate];
+    NSFetchRequest * request = nil;
+    //hot fix 不追踪本地已经存在的万人群消息
+     || [self.transcoder isKindOfClass:[AssetClientMessageRequestStrategy class]]
+    if ([self.transcoder isKindOfClass:[ClientMessageTranscoder class]]) {
+        NSPredicate *noHuge = [NSPredicate predicateWithFormat:@"visibleInConversation.conversationType != 5"];
+        request = [moClass sortedFetchRequestWithPredicate:[NSCompoundPredicate andPredicateWithSubpredicates:@[self.insertPredicate, noHuge]]];
+    } else {
+        request = [moClass sortedFetchRequestWithPredicate:self.insertPredicate];
+    }
+    return request;
 }
 
 - (void)addTrackedObjects:(NSSet *)objects;
 {
+    NSArray *array = [objects sortedArrayUsingDescriptors:@[[NSSortDescriptor sortDescriptorWithKey:@"serverTimestamp" ascending:YES]]];
+    
+    for (NSUInteger i = 0; i< 3; i++) {
+        ZMClientMessage *es = (ZMClientMessage *)array[i];
+        NSLog(@"-------new---------------%@",es.description);
+    }
+    
+    for (NSUInteger i = 0; i< 3; i++) {
+        ZMClientMessage *es = (ZMClientMessage *)array[array.count - i-1];
+        NSLog(@"-------old--------------%@",es.description);
+    }
+    
     for (ZMManagedObject *mo in objects) {
         if ([self shouldAddInsertedObject:mo]) {
             [self addInsertedObject:mo];
+            NSLog(@"--------%hd-----",((ZMClientMessage *)mo).conversation.conversationType);
         }
     }
 }
 
 - (void)objectsDidChange:(NSSet *)objects
 {
+//    NSLog(@"------addInsertedObject--------%ld------%@",objects.count,((ZMClientMessage *)objects.anyObject).description);
     for(ZMManagedObject *obj in objects) {
         if ([obj isKindOfClass:[NSManagedObject class]] && obj.entity == self.trackedEntity)
         {
