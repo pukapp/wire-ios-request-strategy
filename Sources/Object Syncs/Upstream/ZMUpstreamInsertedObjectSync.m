@@ -96,7 +96,7 @@ static NSString* ZMLogTag = @"Network";
     Class moClass = NSClassFromString(self.trackedEntity.managedObjectClassName);
     NSFetchRequest * request = nil;
     //hot fix 不追踪本地已经存在的万人群消息
-     || [self.transcoder isKindOfClass:[AssetClientMessageRequestStrategy class]]
+//     || [self.transcoder isKindOfClass:[AssetClientMessageRequestStrategy class]]
     if ([self.transcoder isKindOfClass:[ClientMessageTranscoder class]]) {
         NSPredicate *noHuge = [NSPredicate predicateWithFormat:@"visibleInConversation.conversationType != 5"];
         request = [moClass sortedFetchRequestWithPredicate:[NSCompoundPredicate andPredicateWithSubpredicates:@[self.insertPredicate, noHuge]]];
