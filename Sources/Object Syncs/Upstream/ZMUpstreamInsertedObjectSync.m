@@ -108,22 +108,21 @@ static NSString* ZMLogTag = @"Network";
 
 - (void)addTrackedObjects:(NSSet *)objects;
 {
-    NSArray *array = [objects sortedArrayUsingDescriptors:@[[NSSortDescriptor sortDescriptorWithKey:@"serverTimestamp" ascending:YES]]];
+ //   NSArray *array = [objects sortedArrayUsingDescriptors:@[[NSSortDescriptor sortDescriptorWithKey:@"serverTimestamp" ascending:YES]]];
     
-    for (NSUInteger i = 0; i< 3; i++) {
-        ZMClientMessage *es = (ZMClientMessage *)array[i];
-        NSLog(@"-------new---------------%@",es.description);
-    }
-    
-    for (NSUInteger i = 0; i< 3; i++) {
-        ZMClientMessage *es = (ZMClientMessage *)array[array.count - i-1];
-        NSLog(@"-------old--------------%@",es.description);
-    }
+//    for (NSUInteger i = 0; i< 3; i++) {
+//        ZMClientMessage *es = (ZMClientMessage *)array[i];
+//        NSLog(@"-------new---------------%@",es.description);
+//    }
+//
+//    for (NSUInteger i = 0; i< 3; i++) {
+//        ZMClientMessage *es = (ZMClientMessage *)array[array.count - i-1];
+//        NSLog(@"-------old--------------%@",es.description);
+//    }
     
     for (ZMManagedObject *mo in objects) {
         if ([self shouldAddInsertedObject:mo]) {
             [self addInsertedObject:mo];
-            NSLog(@"--------%hd-----",((ZMClientMessage *)mo).conversation.conversationType);
         }
     }
 }
