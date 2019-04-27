@@ -221,7 +221,8 @@ extension AssetV3ImageUploadRequestStrategy: ZMUpstreamTranscoder {
 
     public func request(forUpdating managedObject: ZMManagedObject, forKeys keys: Set<String>) -> ZMUpstreamRequest? {
         guard let message = managedObject as? ZMAssetClientMessage else { fatal("Could not cast to ZMAssetClientMessage, it is \(type(of: managedObject)))") }
-        guard let data = managedObjectContext.zm_fileAssetCache.assetData(message, format: .medium, encrypted: true) else { fatal("Could not find image in cache") }
+        let imageFormat: ZMImageFormat = message.isUploadOriginalImage ? .original : .medium
+        guard let data = managedObjectContext.zm_fileAssetCache.assetData(message, format: imageFormat, encrypted: true) else { fatal("Could not find image in cache") }
         guard let retention = message.conversation.map(AssetRequestFactory.Retention.init) else { fatal("Trying to send message that doesn't have a conversation") }
         guard let request = requestFactory.upstreamRequestForAsset(withData: data, shareable: false, retention: retention) else { fatal("Could not create asset request") }
         
@@ -256,7 +257,8 @@ extension AssetV3ImageUploadRequestStrategy: ZMUpstreamTranscoder {
 
     public func shouldCreateRequest(toSyncObject managedObject: ZMManagedObject, forKeys keys: Set<String>, withSync sync: Any) -> Bool {
         guard let message = managedObject as? ZMAssetClientMessage else { return false }
-        guard managedObjectContext.zm_fileAssetCache.hasDataOnDisk(message, format: .medium, encrypted: true) else {
+        let imageFormat: ZMImageFormat = message.isUploadOriginalImage ? .original : .medium
+        guard managedObjectContext.zm_fileAssetCache.hasDataOnDisk(message, format: imageFormat, encrypted: true) else {
             // if the asset data is missing, we should delete the message
             managedObjectContext.delete(message)
             managedObjectContext.enqueueDelayedSave()
@@ -265,10 +267,10 @@ extension AssetV3ImageUploadRequestStrategy: ZMUpstreamTranscoder {
         }
         
         let imageAssetStorage = message.imageAssetStorage
-        if imageAssetStorage.shouldReprocess(for: .medium) && true == message.fileMessageData?.v3_isImage {
+        if imageAssetStorage.shouldReprocess(for: imageFormat) && true == message.fileMessageData?.v3_isImage {
             // before we create an upstream request we should check if we can (and should) process image data again
             // if we can we reschedule processing, this might cause a loop if the message can not be processed whatsoever
-            scheduleImageProcessing(forMessage: message, format: .medium)
+            scheduleImageProcessing(forMessage: message, format: .original)
             managedObjectContext.saveOrRollback()
             return false
         }
