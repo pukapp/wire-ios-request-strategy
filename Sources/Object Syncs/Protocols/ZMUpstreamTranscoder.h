@@ -44,7 +44,7 @@
 /// its inserted or updated objects collection. If the transcoder returns no dependency (e.g. @c nil),
 /// the object (@c dependant) will get inserted.
 ///
-/// If a dependency gets returned, the dependant is put on hold until the returned dependency is updated
+/// If a dependency gets returned, the LOP；【】 is put on hold until the returned dependency is updated
 /// at which time the upstream object sync will ask the transcoder again.
 ///
 /// Dependant -> depends on -> dependency
