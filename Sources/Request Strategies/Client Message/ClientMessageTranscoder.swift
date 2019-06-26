@@ -17,6 +17,7 @@
 //
 
 import Foundation
+import WireDataModel
 
 fileprivate let zmLog = ZMSLog(tag: "Network")
 
@@ -28,6 +29,7 @@ public class ClientMessageTranscoder: AbstractRequestStrategy {
     fileprivate let requestFactory: ClientMessageRequestFactory
     private(set) fileprivate var upstreamObjectSync: ZMUpstreamInsertedObjectSync!
     fileprivate let messageExpirationTimer: MessageExpirationTimer
+    fileprivate let linkAttachmentsPreprocessor: LinkAttachmentsPreprocessor
     fileprivate weak var localNotificationDispatcher: PushMessageHandler!
     
     public init(in moc:NSManagedObjectContext,
@@ -37,6 +39,7 @@ public class ClientMessageTranscoder: AbstractRequestStrategy {
         self.localNotificationDispatcher = localNotificationDispatcher
         self.requestFactory = ClientMessageRequestFactory()
         self.messageExpirationTimer = MessageExpirationTimer(moc: moc, entityNames: [ZMClientMessage.entityName(), ZMAssetClientMessage.entityName()], localNotificationDispatcher: localNotificationDispatcher)
+        self.linkAttachmentsPreprocessor = LinkAttachmentsPreprocessor(linkAttachmentDetector: LinkAttachmentDetectorHelper.defaultDetector(), managedObjectContext: moc)
         
         super.init(withManagedObjectContext: moc, applicationStatus: applicationStatus)
         
@@ -65,7 +68,7 @@ public class ClientMessageTranscoder: AbstractRequestStrategy {
 extension ClientMessageTranscoder: ZMContextChangeTrackerSource {
     
     public var contextChangeTrackers: [ZMContextChangeTracker] {
-        return [self.upstreamObjectSync, self.messageExpirationTimer]
+        return [self.upstreamObjectSync, self.messageExpirationTimer, self.linkAttachmentsPreprocessor]
     }
 }
 
@@ -91,7 +94,21 @@ extension ClientMessageTranscoder: ZMUpstreamTranscoder {
         }
         
         requireInternal(true == message.sender?.isSelfUser, "Trying to send message from sender other than self: \(message.nonce?.uuidString ?? "nil nonce")")
-       
+
+        if message.conversation?.conversationType == .oneOnOne {
+            // Update expectsReadReceipt flag to reflect the current user setting
+            if let updatedGenericMessage = message.genericMessage?.setExpectsReadConfirmation(ZMUser.selfUser(in: managedObjectContext).readReceiptsEnabled) {
+                message.add(updatedGenericMessage.data())
+            }
+        }
+
+        if let legalHoldStatus = message.conversation?.legalHoldStatus {
+            // Update the legalHoldStatus flag to reflect the current known legal hold status
+            if let updatedGenericMessage = message.genericMessage?.setLegalHoldStatus(legalHoldStatus.denotesEnabledComplianceDevice ? .ENABLED : .DISABLED) {
+                message.add(updatedGenericMessage.data())
+            }
+        }
+
         let request = conversation.conversationType == .hugeGroup
             ? requestFactory.upstreamRequestForUnencryptedClientMessage(message, forConversationWithId: cid)!
             : requestFactory.upstreamRequestForMessage(message, forConversationWithId: cid)!
@@ -136,7 +153,7 @@ extension ClientMessageTranscoder: ZMUpstreamTranscoder {
 extension ClientMessageTranscoder {
 
     public var hasPendingMessages: Bool {
-        return self.messageExpirationTimer.hasMessageTimersRunning || self.upstreamObjectSync.hasCurrentlyRunningRequests;
+        return self.messageExpirationTimer.hasMessageTimersRunning || self.upstreamObjectSync.hasCurrentlyRunningRequests
     }
     
     func insertMessage(from event: ZMUpdateEvent, prefetchResult: ZMFetchRequestBatchResult?) {
@@ -157,30 +174,19 @@ extension ClientMessageTranscoder {
                 }
             }
             
-            guard let updateResult = ZMOTRMessage.messageUpdateResult(from: event, in: self.managedObjectContext, prefetchResult: prefetchResult) else {
-                return
-            }
+            guard let message = ZMOTRMessage.createOrUpdate(from: event, in: managedObjectContext, prefetchResult: prefetchResult) else { return }
             
-            updateResult.message?.markAsSent()
+            message.markAsSent()
             
-            print("---updateResult----\(String(describing: updateResult.message?.description))------\(#line)");
-                        
-            if type(of: self.applicationStatus!.deliveryConfirmation).sendDeliveryReceipts {
-                if updateResult.needsConfirmation {
-                    let confirmation = updateResult.message!.confirmReception()!
-                    if event.source == .pushNotification {
-                        self.applicationStatus!.deliveryConfirmation.needsToConfirmMessage(confirmation.nonce!)
-                    }
-                }
-            }
-            
-            if let updateMessage = updateResult.message, event.source == .pushNotification || event.source == .webSocket {
-                self.localNotificationDispatcher.process(updateMessage)
+            if event.source == .pushNotification || event.source == .webSocket {
+                self.localNotificationDispatcher.process(message)
             }
             
         default:
             break
         }
+        
+        managedObjectContext.processPendingChanges()
     }
     
     fileprivate func deleteOldEphemeralMessages() {
@@ -227,7 +233,6 @@ extension ClientMessageTranscoder {
         }
         
         self.messageExpirationTimer.stop(for: message)
-        message.removeExpirationDate()
         message.markAsSent()
         message.update(withPostPayload: response.payload?.asDictionary() ?? [:], updatedKeys: keys)
         _ = message.parseMissingClientsResponse(response, clientRegistrationDelegate: self.applicationStatus!.clientRegistrationDelegate)

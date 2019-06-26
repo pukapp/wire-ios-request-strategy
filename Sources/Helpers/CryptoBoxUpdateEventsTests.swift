@@ -36,11 +36,12 @@ class CryptoboxUpdateEventsTests: MessagingTestBase {
             // THEN
             XCTAssertEqual(decryptedEvent.senderUUID(), self.otherUser.remoteIdentifier!)
             XCTAssertEqual(decryptedEvent.recipientClientID(), self.selfClient.remoteIdentifier!)
-            guard let decryptedMessage = ZMClientMessage.messageUpdateResult(from: decryptedEvent, in: self.syncMOC, prefetchResult: nil) else {
+            
+            guard let decryptedMessage = ZMClientMessage.createOrUpdate(from: decryptedEvent, in: self.syncMOC, prefetchResult: nil) else {
                 return XCTFail()
             }
-            XCTAssertEqual(decryptedMessage.message?.nonce?.transportString(), generic.messageId)
-            XCTAssertEqual(decryptedMessage.message?.textMessageData?.messageText, text)
+            XCTAssertEqual(decryptedMessage.nonce?.transportString(), generic.messageId)
+            XCTAssertEqual(decryptedMessage.textMessageData?.messageText, text)
         }
     }
     
@@ -57,10 +58,11 @@ class CryptoboxUpdateEventsTests: MessagingTestBase {
             let decryptedEvent = self.decryptedAssetUpdateEventFromOtherClient(message: generic)
             
             // THEN
-            guard let decryptedMessage = ZMAssetClientMessage.messageUpdateResult(from: decryptedEvent, in: self.syncMOC, prefetchResult: nil) else {
+            guard let decryptedMessage = ZMAssetClientMessage.createOrUpdate(from: decryptedEvent, in: self.syncMOC, prefetchResult: nil) else {
                 return XCTFail()
             }
-            XCTAssertEqual(decryptedMessage.message?.nonce?.transportString(), generic.messageId)
+            
+            XCTAssertEqual(decryptedMessage.nonce?.transportString(), generic.messageId)
         }
     }
     
@@ -95,7 +97,7 @@ class CryptoboxUpdateEventsTests: MessagingTestBase {
             }
             
             // THEN
-            guard let lastMessage = self.groupConversation.messages.lastObject as? ZMSystemMessage else {
+            guard let lastMessage = self.groupConversation.lastMessage as? ZMSystemMessage else {
                 return XCTFail()
             }
             XCTAssertEqual(lastMessage.systemMessageType, .decryptionFailed)
@@ -137,7 +139,7 @@ class CryptoboxUpdateEventsTests: MessagingTestBase {
             }
 
             // Then
-            guard let lastMessage = self.groupConversation.messages.lastObject as? ZMSystemMessage else { return XCTFail() }
+            guard let lastMessage = self.groupConversation.lastMessage as? ZMSystemMessage else { return XCTFail() }
             XCTAssertEqual(lastMessage.systemMessageType, .decryptionFailed)
         }
     }
@@ -177,7 +179,7 @@ class CryptoboxUpdateEventsTests: MessagingTestBase {
             }
 
             // Then
-            guard let lastMessage = self.groupConversation.messages.lastObject as? ZMSystemMessage else { return XCTFail() }
+            guard let lastMessage = self.groupConversation.lastMessage as? ZMSystemMessage else { return XCTFail() }
             XCTAssertEqual(lastMessage.systemMessageType, .decryptionFailed)
         }
     }

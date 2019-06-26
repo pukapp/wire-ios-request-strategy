@@ -70,7 +70,7 @@ extension ClientMessageTranscoderTests {
         // THEN
         self.syncMOC.performGroupedBlockAndWait {
             XCTAssertTrue(message.isObfuscated)
-            XCTAssertTrue(self.groupConversation.messages.contains(message))
+            XCTAssertTrue(self.groupConversation.allMessages.contains(message))
         }
     }
 
@@ -91,7 +91,7 @@ extension ClientMessageTranscoderTests {
     
         // simulate "reading it"
         let uiConversation = try! self.uiMOC.existingObject(with: self.groupConversation.objectID) as! ZMConversation
-        let message = uiConversation.messages.lastObject as! ZMConversationMessage
+        let message = uiConversation.lastMessage!
         _ = message.startSelfDestructionIfNeeded()
         self.uiMOC.saveOrRollback()
         
@@ -131,7 +131,7 @@ extension ClientMessageTranscoderTests {
         
         // simulate "reading it"
         let uiConversation = try! self.uiMOC.existingObject(with: self.groupConversation.objectID) as! ZMConversation
-        let message = uiConversation.messages.lastObject as! ZMConversationMessage
+        let message = uiConversation.lastMessage!
         _ = message.startSelfDestructionIfNeeded()
         self.uiMOC.saveOrRollback()
         

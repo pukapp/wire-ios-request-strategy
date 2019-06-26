@@ -20,49 +20,61 @@
 import WireImages
 import WireTransport
 
-public struct AssetDownloadRequestStrategyNotification {
-    public static let downloadFinishedNotificationName = Notification.Name("AssetDownloadRequestStrategyDownloadFinishedNotificationName")
-    public static let downloadStartTimestampKey = "downloadRequestStartTimestamp"
-    public static let downloadFailedNotificationName = Notification.Name("AssetDownloadRequestStrategyDownloadFailedNotificationName")
-}
-
-@objcMembers public final class AssetDownloadRequestStrategy: AbstractRequestStrategy, ZMDownstreamTranscoder, ZMContextChangeTrackerSource {
+@objcMembers public final class AssetV2DownloadRequestStrategy: AbstractRequestStrategy, ZMDownstreamTranscoder, ZMContextChangeTrackerSource {
     
-    fileprivate var assetDownstreamObjectSync: ZMDownstreamObjectSync!
-    private var token: Any? = nil
+    fileprivate var assetDownstreamObjectSync: ZMDownstreamObjectSyncWithWhitelist!
+    private var notificationTokens: [Any] = []
     
     public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
         super.init(withManagedObjectContext: managedObjectContext, applicationStatus: applicationStatus)
         
         configuration = [.allowsRequestsDuringEventProcessing]
         
-        registerForCancellationNotification()
-        
-        let downstreamPredicate = NSPredicate(format: "transferState == %d AND visibleInConversation != nil AND version < 3", ZMFileTransferState.downloading.rawValue)
-
-        let filter = NSPredicate { object, _ in
+        let downloadPredicate = NSPredicate { (object, _) -> Bool in
             guard let message = object as? ZMAssetClientMessage else { return false }
-            guard message.fileMessageData != nil else { return false }
-            return message.assetId != nil
+            guard message.version < 3 else { return false }
+            
+            return !message.hasDownloadedFile && message.transferState == .uploaded && message.isDownloading
         }
         
-        self.assetDownstreamObjectSync = ZMDownstreamObjectSync(
-            transcoder: self,
-            entityName: ZMAssetClientMessage.entityName(),
-            predicateForObjectsToDownload: downstreamPredicate,
-            filter: filter,
-            managedObjectContext: managedObjectContext
-        )
+        assetDownstreamObjectSync = ZMDownstreamObjectSyncWithWhitelist(transcoder: self,
+                                                                        entityName: ZMAssetClientMessage.entityName(),
+                                                                        predicateForObjectsToDownload: downloadPredicate,
+                                                                        managedObjectContext: managedObjectContext)
+        
+        registerForCancellationNotification()
+        registerForWhitelistingNotification()
     }
     
     func registerForCancellationNotification() {
         
-        self.token = NotificationInContext.addObserver(name: ZMAssetClientMessage.didCancelFileDownloadNotificationName,
-                                          context: self.managedObjectContext.notificationContext,
-                                          object: nil)
+        notificationTokens.append(NotificationInContext.addObserver(name: ZMAssetClientMessage.didCancelFileDownloadNotificationName,
+                                                                    context: self.managedObjectContext.notificationContext,
+                                                                    object: nil)
         { [weak self] note in
             guard let objectID = note.object as? NSManagedObjectID else { return }
             self?.cancelOngoingRequestForAssetClientMessage(objectID)
+        })
+    }
+    
+    func registerForWhitelistingNotification() {
+        notificationTokens.append(NotificationInContext.addObserver(name: ZMAssetClientMessage.assetDownloadNotificationName,
+                                                                    context: self.managedObjectContext.notificationContext,
+                                                                    object: nil)
+        { [weak self] note in
+            guard let objectID = note.object as? NSManagedObjectID else { return }
+            self?.didRequestToDownloadAsset(objectID)
+        })
+    }
+    
+    func didRequestToDownloadAsset(_ objectID: NSManagedObjectID) {
+        managedObjectContext.performGroupedBlock { [weak self] in
+            guard let `self` = self else { return }
+            guard let object = try? self.managedObjectContext.existingObject(with: objectID) else { return }
+            guard let message = object as? ZMAssetClientMessage else { return }
+            message.isDownloading = true
+            self.assetDownstreamObjectSync.whiteListObject(message)
+            RequestAvailableNotification.notifyNewRequestsAvailable(self)
         }
     }
     
@@ -82,6 +94,10 @@ public struct AssetDownloadRequestStrategyNotification {
     }
     
     fileprivate func handleResponse(_ response: ZMTransportResponse, forMessage assetClientMessage: ZMAssetClientMessage) {
+        var downloadSuccess = false
+        
+        assetClientMessage.isDownloading = false
+        
         if response.result == .success {
             guard let asset = assetClientMessage.genericAssetMessage?.assetData else { return }
             guard assetClientMessage.visibleInConversation != nil else {
@@ -94,45 +110,18 @@ public struct AssetDownloadRequestStrategyNotification {
             let fileCache = self.managedObjectContext.zm_fileAssetCache
             fileCache.storeAssetData(assetClientMessage, encrypted: true, data: response.rawData!)
 
-            let decryptionSuccess = fileCache.decryptFileIfItMatchesDigest(
+            downloadSuccess = fileCache.decryptFileIfItMatchesDigest(
                 assetClientMessage,
                 encryptionKey: asset.uploaded.otrKey,
                 sha256Digest: asset.uploaded.sha256
             )
             
-            if decryptionSuccess {
-                assetClientMessage.transferState = .downloaded
-            }
-            else {
-                assetClientMessage.transferState = .failedDownload
-            }
-        }
-        else {
-            if assetClientMessage.transferState == .downloading {
-                assetClientMessage.transferState = .failedDownload
+            if downloadSuccess {
+                NotificationDispatcher.notifyNonCoreDataChanges(objectID: assetClientMessage.objectID,
+                                                                changedKeys: [#keyPath(ZMAssetClientMessage.hasDownloadedFile)],
+                                                                uiContext: self.managedObjectContext.zm_userInterface!)
             }
         }
-        
-        let messageObjectId = assetClientMessage.objectID
-        let uiManagedObjectContext = self.managedObjectContext.zm_userInterface
-        self.managedObjectContext.saveOrRollback() // I have to force this, or message could not have been merged to UI context when I call the next block
-        uiManagedObjectContext?.performGroupedBlock({ () -> Void in
-            let uiMessage = (try? uiManagedObjectContext!.existingObject(with: messageObjectId)) as? ZMAssetClientMessage
-            
-            let userInfo: [String: Any] = [AssetDownloadRequestStrategyNotification.downloadStartTimestampKey: response.startOfUploadTimestamp ?? Date()]
-            if uiMessage?.transferState == .downloaded {
-                NotificationInContext(name: AssetDownloadRequestStrategyNotification.downloadFinishedNotificationName,
-                                      context: self.managedObjectContext.notificationContext,
-                                      object: uiMessage,
-                                      userInfo: userInfo).post()
-            }
-            else {
-                NotificationInContext(name: AssetDownloadRequestStrategyNotification.downloadFailedNotificationName,
-                                      context: self.managedObjectContext.notificationContext,
-                                      object: uiMessage,
-                                      userInfo: userInfo).post()
-            }
-        })
     }
     
     // MARK: - ZMContextChangeTrackerSource
@@ -168,7 +157,7 @@ public struct AssetDownloadRequestStrategyNotification {
             }
         }
         
-        fatalError("Cannot generate request for \(object.privateDescription)")
+        fatalError("Cannot generate request for \(object.safeForLoggingDescription)")
     }
     
     public func delete(_ object: ZMManagedObject!, with response: ZMTransportResponse!, downstreamSync: ZMObjectSync!) {

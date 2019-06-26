@@ -82,23 +82,24 @@ class AssetClientMessageRequestStrategyTests: MessagingTestBase {
         preview: Bool = false,
         assetId: Bool = false,
         previewAssetId: Bool = false,
-        uploadState: AssetUploadState = .uploadingFullAsset,
-        transferState: ZMFileTransferState = .uploading,
+        transferState: AssetTransferState = .uploading,
+        conversation: ZMConversation? = nil,
         line: UInt = #line
         ) -> ZMAssetClientMessage {
 
+        let targetConversation = conversation ?? groupConversation!
         let message: ZMAssetClientMessage!
         if isImage {
-            message = self.groupConversation.append(imageFromData: imageData) as? ZMAssetClientMessage
+            message = targetConversation.append(imageFromData: imageData) as? ZMAssetClientMessage
         } else {
             let url = Bundle(for: AssetClientMessageRequestStrategyTests.self).url(forResource: "Lorem Ipsum", withExtension: "txt")!
-            message = self.groupConversation.append(file: ZMFileMetadata(fileURL: url, thumbnail: nil)) as? ZMAssetClientMessage
+            message = targetConversation.append(file: ZMFileMetadata(fileURL: url, thumbnail: nil)) as? ZMAssetClientMessage
         }
 
         if isImage {
             let size = CGSize(width: 368, height: 520)
-            let properties = ZMIImageProperties(size: size, length: 1024, mimeType: "image/jpg")
-            message.imageAssetStorage.setImageData(imageData, for: .medium, properties: properties)
+            let properties = ZMIImageProperties(size: size, length: 1024, mimeType: "image/jpg")!
+            message.assets.first?.updateWithPreprocessedData(imageData, imageProperties: properties)
             XCTAssertEqual(message.mimeType, "image/jpg", line: line)
             XCTAssertEqual(message.size, 1024, line: line)
             XCTAssertEqual(message.imageMessageData?.originalSize, size, line: line)
@@ -112,19 +113,19 @@ class AssetClientMessageRequestStrategyTests: MessagingTestBase {
                 withSize: 128,
                 mimeType: "image/jpg",
                 remoteData: .remoteData(withOTRKey: otr, sha256: sha, assetId: previewId, assetToken: nil),
-                imageMetaData: .imageMetaData(withWidth: 123, height: 420)
+                imageMetadata: .imageMetaData(withWidth: 123, height: 420)
             )
 
             let previewMessage = ZMGenericMessage.message(
                 content: ZMAsset.asset(withOriginal: nil, preview: previewAsset),
                 nonce: message.nonce!,
-                expiresAfter: groupConversation.messageDestructionTimeoutValue
+                expiresAfter: targetConversation.messageDestructionTimeoutValue
             )
 
             message.add(previewMessage)
             XCTAssertTrue(message.genericAssetMessage!.assetData!.hasPreview(), line: line)
             XCTAssertEqual(message.genericAssetMessage!.assetData!.preview.remote.hasAssetId(), previewAssetId, line: line)
-            XCTAssertEqual(message.isEphemeral, self.groupConversation.messageDestructionTimeoutValue != 0, line: line)
+            XCTAssertEqual(message.isEphemeral, targetConversation.messageDestructionTimeoutValue != 0, line: line)
         }
 
         if uploaded {
@@ -132,25 +133,23 @@ class AssetClientMessageRequestStrategyTests: MessagingTestBase {
             var uploaded = ZMGenericMessage.message(
                 content: ZMAsset.asset(withUploadedOTRKey: otr, sha256: sha),
                 nonce: message.nonce!,
-                expiresAfter: groupConversation.messageDestructionTimeoutValue
+                expiresAfter: targetConversation.messageDestructionTimeoutValue
             )
             if assetId {
                 uploaded = uploaded.updatedUploaded(withAssetId: UUID.create().transportString(), token: nil)!
             }
             message.add(uploaded)
+            message.updateTransferState(.uploaded, synchronize: true)
             XCTAssertTrue(message.genericAssetMessage!.assetData!.hasUploaded(), line: line)
             XCTAssertEqual(message.isEphemeral, self.groupConversation.messageDestructionTimeoutValue != 0, line: line)
+        } else  {
+            message.updateTransferState(transferState, synchronize: true) // TODO jacob
         }
-
-        message.uploadState = uploadState
-        message.transferState = transferState
 
         syncMOC.saveOrRollback()
         prepareUpload(of: message)
 
-        XCTAssertEqual(message.transferState, transferState, line: line)
         XCTAssertEqual(message.version, 3, line: line)
-        XCTAssertEqual(message.uploadState, uploadState, line: line)
         XCTAssertEqual(message.genericAssetMessage?.assetData?.original.hasImage(), isImage, line: line)
 
         return message
@@ -165,6 +164,28 @@ class AssetClientMessageRequestStrategyTests: MessagingTestBase {
     func testThatItDoesNotCreateARequestIfThereIsNoMatchingMessage() {
         XCTAssertNil(sut.nextRequest())
     }
+    
+    func testThatItDoesNotCreateARequestForAnImageMessageUploadedByOtherUser() {
+        self.syncMOC.performGroupedBlockAndWait {
+            // GIVEN
+            let message = self.createMessage(uploaded: true)
+            message.sender = self.otherUser
+            
+            // THEN
+            XCTAssertNil(self.sut.nextRequest())
+        }
+    }
+    
+    func testThatItDoesNotCreateARequestForAnImageMessageWhichIsExpired() {
+        self.syncMOC.performGroupedBlockAndWait {
+            // GIVEN
+            let message = self.createMessage(uploaded: true)
+            message.expire()
+            
+            // THEN
+            XCTAssertNil(self.sut.nextRequest())
+        }
+    }
 
     func testThatItDoesNotCreateARequestForAnImageMessageWithoutUploaded() {
         self.syncMOC.performGroupedBlockAndWait {
@@ -176,33 +197,11 @@ class AssetClientMessageRequestStrategyTests: MessagingTestBase {
         }
     }
 
-    func testThatItDoesNotCreateARequestForAnImageMessageWithUploadedButWithoutAssetId() {
-        self.syncMOC.performGroupedBlockAndWait {
-            // GIVEN
-            self.createMessage(uploaded: true)
-
-            // THEN
-            XCTAssertNil(self.sut.nextRequest())
-        }
-    }
-
     func testThatItDoesNotCreateARequestForAnImageMessageWithUploadedAndAssetIdInTheWrongTransferState() {
         self.syncMOC.performGroupedBlockAndWait {
             // GIVEN
             let message = self.createMessage()
-            message.transferState = .uploaded
-
-            // THEN
-            XCTAssertNil(self.sut.nextRequest())
-        }
-    }
-
-    func testThatItDoesNotCreateARequestForAnImageMessageWithUploadedAndAssetIdInTheWrongUploadedState() {
-        
-        self.syncMOC.performGroupedBlockAndWait {
-            // GIVEN
-            let message = self.createMessage(uploaded: true, assetId: true)
-            message.uploadState = .done
+            message.updateTransferState(.uploaded, synchronize: true)
 
             // THEN
             XCTAssertNil(self.sut.nextRequest())
@@ -235,61 +234,125 @@ class AssetClientMessageRequestStrategyTests: MessagingTestBase {
         }
     }
 
-    func testThatItCreatesARequestForANonImageMessageWithOnlyAsset_Original() {
+    func testThatItUpdatesExpectsReadConfirmationFlagWhenSendingMessageInOneToOne() {
         self.syncMOC.performGroupedBlockAndWait {
             // GIVEN
-            self.createMessage(isImage: false, uploadState: .uploadingPlaceholder)
-
-            // THEN
-            self.sut.assertCreatesValidRequestForAsset(in: self.groupConversation)
-        }
-    }
-
-    func testThatItCreatesARequestForANonImageMessageWithAsset_PreviewAndPreviewAssetId() {
-        self.syncMOC.performGroupedBlockAndWait {
-            // GIVEN
-            self.createMessage(isImage: false, preview: true, previewAssetId: true, uploadState: .uploadingThumbnail)
+            ZMUser.selfUser(in: self.syncMOC).readReceiptsEnabled = true
+            let message = self.createMessage(isImage: true, uploaded: true, assetId: true, conversation: self.oneToOneConversation)
+            
+            // WHEN
+            XCTAssertNotNil(self.sut.nextRequest())
             
             // THEN
-            self.sut.assertCreatesValidRequestForAsset(in: self.groupConversation)
+            XCTAssertTrue(message.genericMessage!.content!.expectsReadConfirmation())
         }
     }
-
-    func testThatItDoesNotCreateARequestForANonImageMessageWithAsset_PreviewAndWithoutPreviewAssetId() {
+    
+    func testThatItDoesntUpdateExpectsReadConfirmationFlagWhenSendingMessageInGroup() {
         self.syncMOC.performGroupedBlockAndWait {
             // GIVEN
-            self.createMessage(isImage: false, preview: true, previewAssetId: false, uploadState: .uploadingThumbnail)
-
+            ZMUser.selfUser(in: self.syncMOC).readReceiptsEnabled = true
+            let message = self.createMessage(isImage: true, uploaded: true, assetId: true, conversation: self.groupConversation)
+            
+            // WHEN
+            XCTAssertNotNil(self.sut.nextRequest())
+            
             // THEN
-            XCTAssertNil(self.sut.nextRequest())
+            XCTAssertFalse(message.genericMessage!.content!.expectsReadConfirmation())
         }
     }
-
-    func testThatItCreatesARequestForANonImageMessageWithAsset_UploadedAndAssetId() {
+    
+    func testThatItUpdateExpectsReadConfirmationFlagWhenReadReceiptsAreDisabled() {
         self.syncMOC.performGroupedBlockAndWait {
             // GIVEN
-            self.createMessage(isImage: false, uploaded: true, assetId: true, uploadState: .uploadingFullAsset)
-
+            ZMUser.selfUser(in: self.syncMOC).readReceiptsEnabled = false
+            let message = self.createMessage(isImage: true, uploaded: true, assetId: true, conversation: self.oneToOneConversation)
+            message.add(message.genericMessage!.setExpectsReadConfirmation(true)!)
+            
+            // WHEN
+            XCTAssertNotNil(self.sut.nextRequest())
+            
             // THEN
-            self.sut.assertCreatesValidRequestForAsset(in: self.groupConversation)
+            XCTAssertFalse(message.genericMessage!.content!.expectsReadConfirmation())
         }
     }
 
-    func testThatItDoesNotCreateARequestForANonImageMessageWithAsset_UploadedAndWithoutAssetId() {
+    func testThatItUpdateLegalHoldStatusWhenLegalHoldIsEnabled() {
         self.syncMOC.performGroupedBlockAndWait {
             // GIVEN
-            self.createMessage(isImage: false, uploaded: true, assetId: false, uploadState: .uploadingFullAsset)
+            ZMUser.selfUser(in: self.syncMOC).readReceiptsEnabled = false
+            let message = self.createMessage(isImage: true, uploaded: true, assetId: true, conversation: self.oneToOneConversation)
+            message.add(message.genericMessage!.setExpectsReadConfirmation(true)!)
+
+            // WHEN
+            XCTAssertNotNil(self.sut.nextRequest())
 
             // THEN
-            XCTAssertNil(self.sut.nextRequest())
+            XCTAssertFalse(message.genericMessage!.content!.expectsReadConfirmation())
         }
     }
 
-    func testThatItCreatesARequestToUploadNotUploaded_Failed() {
+    func testThatItUpdatesLegalHoldStatusFlagWhenLegalHoldIsEnabled() {
+        self.syncMOC.performGroupedBlockAndWait {
+
+            // GIVEN
+            let legalHoldClient = UserClient.insertNewObject(in: self.syncMOC)
+            legalHoldClient.deviceClass = .legalHold
+            legalHoldClient.type = .legalHold
+            legalHoldClient.user = self.otherUser
+
+            let conversation = self.groupConversation!
+            conversation.decreaseSecurityLevelIfNeededAfterDiscovering(clients: [legalHoldClient], causedBy: [self.otherUser])
+            XCTAssertTrue(conversation.isUnderLegalHold)
+
+            let message = self.createMessage(isImage: true, uploaded: true, assetId: true, conversation: self.groupConversation)
+            message.add(message.genericMessage!.setLegalHoldStatus(.ENABLED)!)
+            self.syncMOC.saveOrRollback()
+
+            // WHEN
+            self.sut.contextChangeTrackers.forEach { $0.objectsDidChange(Set([message])) }
+            if self.sut.nextRequest() == nil {
+                XCTFail()
+                return
+            }
+
+            // THEN
+            XCTAssertEqual(message.genericMessage!.content!.legalHoldStatus, .ENABLED)
+        }
+    }
+
+    func testThatItUpdatesLegalHoldStatusFlagWhenLegalHoldIsDisabled() {
+        self.syncMOC.performGroupedBlockAndWait {
+
+            // GIVEN
+            let conversation = self.groupConversation!
+            XCTAssertFalse(conversation.isUnderLegalHold)
+
+            let message = self.createMessage(isImage: true, uploaded: true, assetId: true, conversation: self.groupConversation)
+            message.add(message.genericMessage!.setLegalHoldStatus(.ENABLED)!)
+            self.syncMOC.saveOrRollback()
+
+            // WHEN
+            self.sut.contextChangeTrackers.forEach { $0.objectsDidChange(Set([message])) }
+            if self.sut.nextRequest() == nil {
+                XCTFail()
+                return
+            }
+
+            // THEN
+            XCTAssertEqual(message.genericMessage!.content!.legalHoldStatus, .DISABLED)
+        }
+    }
+
+
+
+    // MARK: Response handling
+    
+    func testThatItExpiresAMessageWhenItReceivesAFailureResponse() {
         // GIVEN
         var message: ZMAssetClientMessage!
         self.syncMOC.performGroupedBlockAndWait {
-            message = self.createMessage(isImage: false, uploaded: true, assetId: true, uploadState: .uploadingFullAsset, transferState: .uploading)
+            message = self.createMessage(uploaded: true, assetId: true)
         }
         
         // WHEN
@@ -301,105 +364,11 @@ class AssetClientMessageRequestStrategyTests: MessagingTestBase {
         
         // THEN
         self.syncMOC.performGroupedBlockAndWait {
-            XCTAssertEqual(message.uploadState, .uploadingFailed)
-            XCTAssertEqual(message.transferState, .failedUpload)
-            XCTAssertTrue(message.genericAssetMessage!.assetData!.hasNotUploaded())
-            self.sut.assertCreatesValidRequestForAsset(in: self.groupConversation)
-        }
-    }
-
-    func testThatItCreatesARequestToUploadNotUploaded_Cancelled() {
-        self.syncMOC.performGroupedBlockAndWait {
-            // GIVEN
-            let message: ZMAssetClientMessage = self.createMessage(isImage: false, uploaded: true, assetId: true, uploadState: .uploadingFullAsset, transferState: .uploading)
-
-            // WHEN
-            message.fileMessageData?.cancelTransfer()
-
-            // THEN
-            XCTAssertEqual(message.uploadState, .uploadingFailed)
-            XCTAssertEqual(message.transferState, .cancelledUpload)
-            XCTAssertTrue(message.genericAssetMessage!.assetData!.hasNotUploaded())
-            self.sut.assertCreatesValidRequestForAsset(in: self.groupConversation)
-        }
-    }
-
-    func testThatItDoesNotCreateARequestToUploadNotUploaded_WrongStates() {
-        // GIVEN
-        var message: ZMAssetClientMessage!
-        self.syncMOC.performGroupedBlockAndWait {
-            message = self.createMessage(isImage: false, uploadState: .uploadingFullAsset, transferState: .uploading)
-        }
-        
-        // WHEN
-        self.syncMOC.performGroupedBlockAndWait {
-            let notUploaded = ZMGenericMessage.message(content: ZMAsset.asset(withNotUploaded: .CANCELLED), nonce: message.nonce!)
-            message.add(notUploaded)
-            XCTAssertTrue(message.genericAssetMessage!.assetData!.hasNotUploaded())
-        }
-        
-        // THEN
-        self.syncMOC.performGroupedBlockAndWait {
+            XCTAssert(message.isExpired)
+            XCTAssertEqual(message.deliveryState, .failedToSend)
             XCTAssertNil(self.sut.nextRequest())
         }
     }
-
-    func testThatItDoesNotCreateARequestForANonImageMessageWithOnlyAsset_Original_WrongStates() {
-        
-        self.syncMOC.performGroupedBlockAndWait {
-
-            self.createMessage(isImage: false, uploadState: .uploadingThumbnail, transferState: .uploading)
-            XCTAssertNil(self.sut.nextRequest())
-            
-            self.createMessage(isImage: false, uploadState: .uploadingFullAsset, transferState: .uploading)
-            XCTAssertNil(self.sut.nextRequest())
-            
-            self.createMessage(isImage: false, uploadState: .uploadingFailed, transferState: .uploading)
-            XCTAssertNil(self.sut.nextRequest())
-        }
-    }
-    
-    func testThatItDoesNotCreateARequestForANonImageMessageWithAsset_PreviewAndPreviewAssetId_WrongStates() {
-        self.syncMOC.performGroupedBlockAndWait {
-            
-            self.createMessage(isImage: false, preview: true, previewAssetId: true, uploadState: .done, transferState: .uploading)
-            XCTAssertNil(self.sut.nextRequest())
-            
-            self.createMessage(isImage: false, preview: true, previewAssetId: true, uploadState: .uploadingFullAsset, transferState: .uploading)
-            XCTAssertNil(self.sut.nextRequest())
-            
-            self.createMessage(isImage: false, preview: true, previewAssetId: true, uploadState: .uploadingFailed, transferState: .uploading)
-            XCTAssertNil(self.sut.nextRequest())
-            
-            self.createMessage(isImage: false, preview: true, previewAssetId: true, uploadState: .uploadingFullAsset, transferState: .downloaded)
-            XCTAssertNil(self.sut.nextRequest())
-            
-            self.createMessage(isImage: false, preview: true, previewAssetId: true, uploadState: .uploadingFailed, transferState: .uploaded)
-            XCTAssertNil(self.sut.nextRequest())
-        }
-    }
-    
-    func testThatItDoesNotCreateARequestForANonImageMessageWithAsset_UploadedAndAssetId_WrongStates() {
-        self.syncMOC.performGroupedBlockAndWait {
-            
-            self.createMessage(isImage: false, uploaded: true, assetId: true, uploadState: .done, transferState: .uploading)
-            XCTAssertNil(self.sut.nextRequest())
-            
-            self.createMessage(isImage: false, uploaded: true, assetId: true, uploadState: .uploadingFailed, transferState: .uploading)
-            XCTAssertNil(self.sut.nextRequest())
-            
-            self.createMessage(isImage: false, uploaded: true, assetId: true, uploadState: .uploadingThumbnail, transferState: .uploading)
-            XCTAssertNil(self.sut.nextRequest())
-            
-            self.createMessage(isImage: false, uploaded: true, assetId: true, uploadState: .uploadingThumbnail, transferState: .downloaded)
-            XCTAssertNil(self.sut.nextRequest())
-            
-            self.createMessage(isImage: false, uploaded: true, assetId: true, uploadState: .uploadingThumbnail, transferState: .uploaded)
-            XCTAssertNil(self.sut.nextRequest())
-        }
-    }
-
-    // MARK: Response handling
 
     func testThatItMarksAnImageMessageAsSentWhenItReceivesASuccesfulResponse() {
         
@@ -420,7 +389,6 @@ class AssetClientMessageRequestStrategyTests: MessagingTestBase {
         self.syncMOC.performGroupedBlockAndWait {
             XCTAssert(message.delivered)
             XCTAssertEqual(message.deliveryState, .sent)
-            XCTAssertEqual(message.uploadState, .done)
             XCTAssertNil(self.sut.nextRequest())
         }
     }
@@ -448,220 +416,5 @@ class AssetClientMessageRequestStrategyTests: MessagingTestBase {
             XCTAssertNil(self.sut.nextRequest())
         }
     }
-
-    func testThatItUpdatesTheStateOfANonImageFileMessageWithoutThumbnailAfterUploadingTheOriginal() {
     
-        // GIVEN
-        var message: ZMAssetClientMessage!
-        self.syncMOC.performGroupedBlockAndWait {
-            message = self.createMessage(isImage: false, uploadState: .uploadingPlaceholder)
-        }
-
-        // WHEN
-        self.syncMOC.performGroupedBlockAndWait {
-            let request = self.sut.assertCreatesValidRequestForAsset(in: self.groupConversation)!
-            request.complete(withHttpStatus: 200)
-        }
-        
-        XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
-
-        // THEN
-        self.syncMOC.performGroupedBlockAndWait {
-            XCTAssertEqual(message.uploadState, AssetUploadState.uploadingFullAsset)
-            XCTAssertEqual(message.transferState, .uploading)
-            XCTAssertFalse(message.delivered)
-
-            // No request should be generated until the full asset has been uploaded
-            XCTAssertNil(self.sut.nextRequest())
-        }
-    }
-
-    func testThatItUpdatesTheStateOfANonImageFileMessageWithThumbnailAfterUploadingTheOriginal() {
-        // GIVEN
-        var message: ZMAssetClientMessage!
-        self.syncMOC.performGroupedBlockAndWait {
-            message = self.createMessage(isImage: false, preview: true, uploadState: .uploadingPlaceholder)
-            self.syncMOC.zm_fileAssetCache.storeAssetData(message, format: .original, encrypted: false, data: self.mediumJPEGData())
-        }
-        
-        // WHEN
-        self.syncMOC.performGroupedBlockAndWait {
-            let request = self.sut.assertCreatesValidRequestForAsset(in: self.groupConversation)!
-            request.complete(withHttpStatus: 200)
-        }
-        XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
-
-        // THEN
-        self.syncMOC.performGroupedBlockAndWait {
-            XCTAssertEqual(message.uploadState, .uploadingThumbnail)
-            XCTAssertEqual(message.transferState, .uploading)
-            XCTAssertFalse(message.delivered)
-
-            // No request should be generated until the full asset has been uploaded
-            XCTAssertNil(self.sut.nextRequest())
-        }
-    }
-
-    func testThatItUpdatesTheStateOfANonImageFileMessageAfterUploadingTheThumbnail() {
-        var message: ZMAssetClientMessage!
-        self.syncMOC.performGroupedBlockAndWait {
-            
-            // GIVEN
-            message = self.createMessage(isImage: false, preview: true, previewAssetId: true, uploadState: .uploadingThumbnail)
-
-            // WHEN
-            let request = self.sut.assertCreatesValidRequestForAsset(in: self.groupConversation)!
-            request.complete(withHttpStatus: 200)
-        }
-        XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
-
-        // THEN
-        self.syncMOC.performGroupedBlockAndWait {
-            
-            XCTAssertEqual(message.uploadState, .uploadingFullAsset)
-            XCTAssertEqual(message.transferState, .uploading)
-            XCTAssertFalse(message.delivered)
-
-            // No request should be generated until the full asset has been uploaded
-            XCTAssertNil(self.sut.nextRequest())
-        }
-    }
-
-    func testThatItUpdatesTheStateOfANonImageFileMessageAfterUploadingTheFullAsset() {
-        
-        // GIVEN
-        var message: ZMAssetClientMessage!
-        self.syncMOC.performGroupedBlockAndWait {
-            message = self.createMessage(isImage: false, uploaded: true, assetId: true, uploadState: .uploadingFullAsset)
-        }
-        
-        // WHEN
-        self.syncMOC.performGroupedBlockAndWait {
-            let request = self.sut.assertCreatesValidRequestForAsset(in: self.groupConversation)!
-            request.complete(withHttpStatus: 200)
-        }
-        XCTAssert(self.waitForAllGroupsToBeEmpty(withTimeout: 0.5))
-
-        // THEN
-        self.syncMOC.performGroupedBlockAndWait {
-            XCTAssertEqual(message.uploadState, .done)
-            XCTAssertEqual(message.transferState, .downloaded)
-            XCTAssertTrue(message.delivered)
-            XCTAssertNil(self.sut.nextRequest())
-        }
-    }
-
-    func testThatItUpdatesTheStateOfANonImageFileMessageAfterUploadingTheFullAssetWithTheumbnail() {
-        // GIVEN
-        var message: ZMAssetClientMessage!
-        self.syncMOC.performGroupedBlockAndWait {
-            message = self.createMessage(isImage: false, uploaded: true, preview: true, assetId: true, previewAssetId: true, uploadState: .uploadingFullAsset)
-        }
-        
-        // WHEN
-        self.syncMOC.performGroupedBlockAndWait {
-            let request = self.sut.assertCreatesValidRequestForAsset(in: self.groupConversation)!
-            request.complete(withHttpStatus: 200)
-        }
-        XCTAssert(self.waitForAllGroupsToBeEmpty(withTimeout: 0.5))
-
-        // THEN
-        self.syncMOC.performGroupedBlockAndWait {
-            XCTAssertEqual(message.uploadState, .done)
-            XCTAssertEqual(message.transferState, .downloaded)
-            XCTAssertTrue(message.delivered)
-            XCTAssertNil(self.sut.nextRequest())
-        }
-    }
-
-    func testThatItUpdatesTheStateOfANonImageFileMessageAfterUploadingTheNotUploaded() {
-        
-        // GIVEN
-        var message: ZMAssetClientMessage!
-        self.syncMOC.performGroupedBlockAndWait {
-            message = self.createMessage(isImage: false, uploaded: true, assetId: true, uploadState: .uploadingFullAsset)
-        }
-        
-        // WHEN
-        self.syncMOC.performGroupedBlockAndWait {
-            let uploadedRequest = self.sut.assertCreatesValidRequestForAsset(in: self.groupConversation)!
-            uploadedRequest.complete(withHttpStatus: 400)
-        }
-        XCTAssert(self.waitForAllGroupsToBeEmpty(withTimeout: 0.5))
-
-        self.syncMOC.performGroupedBlockAndWait {
-            let notUploadedRequest = self.sut.assertCreatesValidRequestForAsset(in: self.groupConversation)!
-            notUploadedRequest.complete(withHttpStatus: 200)
-        }
-        
-        // THEN
-        XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
-        self.syncMOC.performGroupedBlockAndWait {
-            XCTAssertEqual(message.uploadState, .uploadingFailed)
-            XCTAssertEqual(message.transferState, .failedUpload)
-            XCTAssertFalse(message.delivered)
-            XCTAssertNil(self.sut.nextRequest())
-        }
-    }
-
-    func testThatItUpdatesTheStateOfANonImageFileMessageAfterFailingToSendTheThumbnail() {
-        
-        // GIVEN
-        var message: ZMAssetClientMessage!
-        self.syncMOC.performGroupedBlockAndWait {
-            message = self.createMessage(isImage: false, preview: true, previewAssetId: true, uploadState: .uploadingThumbnail)
-        }
-        
-        // WHEN
-        self.syncMOC.performGroupedBlockAndWait {
-            let thumbnailRequest = self.sut.assertCreatesValidRequestForAsset(in: self.groupConversation)!
-            thumbnailRequest.complete(withHttpStatus: 400)
-        }
-        XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
-
-        self.syncMOC.performGroupedBlockAndWait {
-            let notUploadedRequest = self.sut.assertCreatesValidRequestForAsset(in: self.groupConversation)!
-            notUploadedRequest.complete(withHttpStatus: 200)
-        }
-        XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
-
-        // THEN
-        self.syncMOC.performGroupedBlockAndWait {
-            XCTAssertEqual(message.uploadState, .uploadingFailed)
-            XCTAssertEqual(message.transferState, .failedUpload)
-            XCTAssertFalse(message.delivered)
-            XCTAssertNil(self.sut.nextRequest())
-        }
-    }
-
-    func testThatItUpdatesTheStateOfANonImageFileMessageAfterFailingToSendTheFullAsset() {
-        
-        // GIVEN
-        var message: ZMAssetClientMessage!
-        self.syncMOC.performGroupedBlockAndWait {
-            message = self.createMessage(isImage: false, uploaded: true, assetId: true, uploadState: .uploadingFullAsset)
-        }
-        
-        // WHEN
-        self.syncMOC.performGroupedBlockAndWait {
-            let uploadedRequest = self.sut.assertCreatesValidRequestForAsset(in: self.groupConversation)!
-            uploadedRequest.complete(withHttpStatus: 400)
-        }
-        XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
-
-        self.syncMOC.performGroupedBlockAndWait {
-            let notUploadedRequest = self.sut.assertCreatesValidRequestForAsset(in: self.groupConversation)!
-            notUploadedRequest.complete(withHttpStatus: 200)
-        }
-        XCTAssert(waitForAllGroupsToBeEmpty(withTimeout: 0.5))
-
-        // THEN
-        self.syncMOC.performGroupedBlockAndWait {
-            XCTAssertEqual(message.uploadState, .uploadingFailed)
-            XCTAssertEqual(message.transferState, .failedUpload)
-            XCTAssertFalse(message.delivered)
-            XCTAssertNil(self.sut.nextRequest())
-        }
-    }
-
 }
