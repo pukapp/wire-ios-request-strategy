@@ -42,6 +42,8 @@ class MessagingTestBase: ZMTBaseTest {
 
     override func setUp() {
         super.setUp()
+        BackgroundActivityFactory.shared.activityManager = UIApplication.shared
+        BackgroundActivityFactory.shared.resume()
         
         self.deleteAllOtherEncryptionContexts()
         self.deleteAllFilesInCache()
@@ -61,6 +63,7 @@ class MessagingTestBase: ZMTBaseTest {
     }
     
     override func tearDown() {
+        BackgroundActivityFactory.shared.activityManager = nil
 
         _ = self.waitForAllGroupsToBeEmpty(withTimeout: 10)
         self.syncMOC.performGroupedBlockAndWait {
@@ -285,7 +288,7 @@ extension MessagingTestBase {
         selfClient.user = user
         
         self.syncMOC.setPersistentStoreMetadata(selfClient.remoteIdentifier!, key: "PersistedClientId")
-        selfClient.type = "permanent"
+        selfClient.type = .permanent
         self.syncMOC.saveOrRollback()
         return selfClient
     }
@@ -293,6 +296,13 @@ extension MessagingTestBase {
 
 // MARK: - Internal helpers
 extension MessagingTestBase {
+    
+    func setupTimers() {
+        syncMOC.performGroupedAndWait() {
+            $0.zm_createMessageObfuscationTimer()
+        }
+        uiMOC.zm_createMessageDeletionTimer()
+    }
     
     func stopEphemeralMessageTimers() {
         self.syncMOC.performGroupedBlockAndWait {
@@ -336,8 +346,10 @@ extension MessagingTestBase {
         
         self.uiMOC.zm_sync = self.syncMOC
         self.uiMOC.zm_fileAssetCache = fileAssetCache
+        
+        setupTimers()
     }
-    
+
     override var allDispatchGroups: [ZMSDispatchGroup] {
         return super.allDispatchGroups + [self.syncMOC?.dispatchGroup, self.uiMOC?.dispatchGroup].compactMap { $0 }
     }

@@ -35,7 +35,7 @@ private let zmLog = ZMSLog(tag: "AssetPreviewDownloading")
             guard let message = object as? ZMAssetClientMessage, nil != message.fileMessageData else { return false }
             guard message.version == 3, message.visibleInConversation != nil else { return false }
             guard nil != message.genericAssetMessage?.previewAssetId else { return false }
-            return !message.hasDownloadedImage
+            return !message.hasDownloadedPreview
         }
 
         downstreamSync = ZMDownstreamObjectSyncWithWhitelist(
@@ -94,7 +94,7 @@ private let zmLog = ZMSLog(tag: "AssetPreviewDownloading")
         // Notify about the changes
         guard let uiMOC = managedObjectContext.zm_userInterface else { return }
         NotificationDispatcher.notifyNonCoreDataChanges(objectID: assetClientMessage.objectID,
-                                                        changedKeys: [#keyPath(ZMAssetClientMessage.hasDownloadedImage)],
+                                                        changedKeys: [#keyPath(ZMAssetClientMessage.hasDownloadedPreview)],
                                                         uiContext: uiMOC)
     }
 
@@ -125,7 +125,7 @@ extension AssetV3PreviewDownloadRequestStrategy: ZMDownstreamTranscoder {
             }
         }
 
-        fatal("Cannot generate request to download v3 file preview for \(object.privateDescription)")
+        fatal("Cannot generate request to download v3 file preview for \(object.safeForLoggingDescription)")
     }
 
     public func delete(_ object: ZMManagedObject!, with response: ZMTransportResponse!, downstreamSync: ZMObjectSync!) {

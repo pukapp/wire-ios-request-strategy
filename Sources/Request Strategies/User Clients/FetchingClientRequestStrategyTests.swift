@@ -51,6 +51,73 @@ class FetchClientRequestStrategyTests : MessagingTestBase {
     
 }
 
+// MARK: Fetching client based on needsToBeUpdatedFromBackend flag
+
+extension FetchClientRequestStrategyTests {
+    
+    func testThatItCreatesARequest_WhenUserClientNeedsToBeUpdatedFromBackend() {
+        syncMOC.performGroupedBlockAndWait {
+            // GIVEN
+            let clientUUID = UUID()
+            let client = UserClient.fetchUserClient(withRemoteId: clientUUID.transportString(), forUser: self.otherUser, createIfNeeded: true)!
+            
+            // WHEN
+            client.needsToBeUpdatedFromBackend = true
+            self.sut.objectsDidChange(Set(arrayLiteral: client))
+            
+            // THEN
+            XCTAssertEqual(self.sut.nextRequest()?.path, "/users/\(self.otherUser.remoteIdentifier!.transportString())/clients/\(clientUUID.transportString())")
+        }
+    }
+    
+    func testThatItUpdatesTheClient_WhenReceivingTheResponse() {
+        var client: UserClient!
+        syncMOC.performGroupedBlockAndWait {
+            // GIVEN
+            let clientUUID = UUID()
+            let payload = [
+                    "id" : clientUUID.transportString(),
+                    "class" : "phone"
+                ]
+            client = UserClient.fetchUserClient(withRemoteId: clientUUID.transportString(), forUser: self.otherUser, createIfNeeded: true)!
+            
+            // WHEN
+            client.needsToBeUpdatedFromBackend = true
+            self.sut.objectsDidChange(Set(arrayLiteral: client))
+            let request = self.sut.nextRequest()
+            request?.complete(with: ZMTransportResponse(payload: payload as ZMTransportData, httpStatus: 200, transportSessionError: nil))
+        }
+        XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.2))
+        
+        // THEN
+        syncMOC.performGroupedBlockAndWait {
+            XCTAssertEqual(client.deviceClass, .phone)
+        }
+    }
+    
+    func testThatItDeletesTheClient_WhenReceivingPermanentErrorResponse() {
+        var client: UserClient!
+        syncMOC.performGroupedBlockAndWait {
+            // GIVEN
+            let clientUUID = UUID()
+            client = UserClient.fetchUserClient(withRemoteId: clientUUID.transportString(), forUser: self.otherUser, createIfNeeded: true)!
+            
+            // WHEN
+            client.needsToBeUpdatedFromBackend = true
+            self.sut.objectsDidChange(Set(arrayLiteral: client))
+            let request = self.sut.nextRequest()
+            request?.complete(with: ZMTransportResponse(payload: nil, httpStatus: 404, transportSessionError: nil))
+        }
+        XCTAssertTrue(waitForAllGroupsToBeEmpty(withTimeout: 0.2))
+        
+        // THEN
+        syncMOC.performGroupedBlockAndWait {
+            XCTAssertTrue(client.isZombieObject)
+        }
+    }
+    
+}
+
 // MARK: Fetching Other Users Clients
 extension FetchClientRequestStrategyTests {
     
@@ -92,10 +159,10 @@ extension FetchClientRequestStrategyTests {
         
         // THEN
         self.syncMOC.performGroupedBlockAndWait {
-            let expectedDeviceClasses = Set(arrayLiteral: "phone", "tablet")
-            let actualDeviceClasses = Set(user.clients.compactMap { $0.deviceClass })
-            let expectedIdentifiers = Set(arrayLiteral: firstIdentifier, secondIdentifier)
-            let actualIdentifiers = Set(user.clients.map { $0.remoteIdentifier! })
+            let expectedDeviceClasses: Set<DeviceClass> = [.phone, .tablet]
+            let actualDeviceClasses = Set(user.clients.compactMap(\.deviceClass))
+            let expectedIdentifiers: Set<String> = [firstIdentifier, secondIdentifier]
+            let actualIdentifiers = Set(user.clients.compactMap(\.remoteIdentifier))
             XCTAssertEqual(user.clients.count, 2)
             XCTAssertEqual(expectedDeviceClasses, actualDeviceClasses)
             XCTAssertEqual(expectedIdentifiers, actualIdentifiers)
