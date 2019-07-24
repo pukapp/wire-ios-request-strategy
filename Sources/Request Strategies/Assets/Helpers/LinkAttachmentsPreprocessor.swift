@@ -74,23 +74,13 @@ public final class LinkAttachmentDetectorHelper : NSObject {
 
     override func didProcessMessage(_ message: ZMClientMessage, result linkAttachments: [LinkAttachment]) {
         finishProcessing(message)
-        
-//        if !message.isObfuscated {
-//            message.linkAttachments = linkAttachments
-//        } else {
-//            message.linkAttachments = []
-//        }
-            
-        ///这里在显示消息的时候会针对每个文字消息进行解析，判断是否存在链接等特殊文字，并且修改数据库
-        if linkAttachments.count > 0 && message.linkAttachments != nil {
-            ///由于linkAttachments默认值为nil，所以这里增加了判断，只有当真的存在特殊链接的时候，才会对linkAttachments赋值，从而触发messageChangeInfo,刷新页面
-            if !message.isObfuscated {
-                message.linkAttachments = linkAttachments
-            } else {
-                message.linkAttachments = []
-            }
+
+        if !message.isObfuscated {
+            message.linkAttachments = linkAttachments
+        } else {
+            message.linkAttachments = []
         }
-        
+
         message.needsLinkAttachmentsUpdate = false
 
         // The change processor is called as a response to a context save,
