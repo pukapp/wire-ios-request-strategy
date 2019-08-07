@@ -150,7 +150,12 @@ class AssetImageOwnerAdapter: NSObject, ZMImageOwner {
     }
     
     func requiredImageFormats() -> NSOrderedSet {
-        return NSOrderedSet(array: [ZMImageFormat.medium.rawValue])
+        //return NSOrderedSet(array: [ZMImageFormat.medium.rawValue])
+        if self.asset.needsUploadOriginal {
+            return NSOrderedSet(array: [ZMImageFormat.original.rawValue])
+        } else {
+            return NSOrderedSet(array: [ZMImageFormat.medium.rawValue])
+        }
     }
     
     func originalImageData() -> Data? {
