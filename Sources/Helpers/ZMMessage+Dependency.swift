@@ -119,6 +119,10 @@ extension ZMMessage {
 extension ZMMessage : BlockingMessage {
     
     var shouldBlockFurtherMessages : Bool {
+        ///当前一条消息为视频消息的时候，不堵塞住后面的其他消息
+        if let videoMessage = self as? ZMAssetClientMessage, videoMessage.isVideo {
+            return false
+        }
         return self.deliveryState == .pending && !self.isExpired
     }
 }
