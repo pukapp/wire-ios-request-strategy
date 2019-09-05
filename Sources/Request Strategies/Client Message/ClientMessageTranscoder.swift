@@ -204,17 +204,13 @@ extension ClientMessageTranscoder {
             let genericMessage = message.genericMessage else {
                 return
         }
-        //禁言处理
+        //禁言发送失败的消息处理
         if let payload = response.payload?.asDictionary(),
-           let code = payload["code"] as? Int,
-           let data = payload["data"] as? [String: Any],
-           let blockTime = data["block_time"] as? Int64,
-           let duration = data["block_duration"] as? Int64,
-           [1015,1014].contains(code) {
-            UserDisableSendMsgStatus.update(managedObjectContext: self.managedObjectContext, block_time: NSNumber(value: blockTime), block_duration: NSNumber(value: duration), user: message.sender?.remoteIdentifier.transportString(), conversation: message.conversation?.remoteIdentifier?.transportString(), fromPushChannel: true)
+            let code = payload["code"] as? Int,
+            [1015,1014].contains(code) {
+            managedObjectContext.delete(message)
             return
         }
-        
         self.update(message, from: response, keys: upstreamRequest.keys ?? Set())
         _ = message.parseMissingClientsResponse(response, clientRegistrationDelegate: self.applicationStatus!.clientRegistrationDelegate)
         
