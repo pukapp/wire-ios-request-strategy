@@ -136,13 +136,7 @@ extension AssetClientMessageRequestStrategy: ZMUpstreamTranscoder {
 
     public func updateUpdatedObject(_ managedObject: ZMManagedObject, requestUserInfo: [AnyHashable : Any]? = nil, response: ZMTransportResponse, keysToParse: Set<String>) -> Bool {
         guard let message = managedObject as? ZMAssetClientMessage else { return false }
-        //禁言发送失败的消息处理
-        if let payload = response.payload?.asDictionary(),
-            let code = payload["code"] as? Int,
-            [1015,1014].contains(code) {
-            managedObjectContext.delete(message)
-            return false
-        }
+        
         message.update(withPostPayload: response.payload?.asDictionary() ?? [:], updatedKeys: keysToParse)
         if let delegate = applicationStatus?.clientRegistrationDelegate{
             _ = message.parseUploadResponse(response, clientRegistrationDelegate: delegate)
@@ -151,7 +145,12 @@ extension AssetClientMessageRequestStrategy: ZMUpstreamTranscoder {
         if response.result == .success {
             message.markAsSent()
         }
-
+        //禁言发送失败的消息处理
+        if let payload = response.payload?.asDictionary(),
+            let code = payload["code"] as? Int,
+            [1015,1014].contains(code) {
+            message.removeClearingSender(true)
+        }
         return false
     }
 
