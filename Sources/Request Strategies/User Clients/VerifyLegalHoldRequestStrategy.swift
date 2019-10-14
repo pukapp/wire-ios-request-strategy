@@ -46,7 +46,10 @@ extension VerifyLegalHoldRequestStrategy:  ZMContextChangeTracker, ZMContextChan
     }
     
     public func fetchRequestForTrackedObjects() -> NSFetchRequest<NSFetchRequestResult>? {
-        return ZMConversation.sortedFetchRequest(with: NSPredicate(format: "needsToVerifyLegalHold != 0"))
+        //return ZMConversation.sortedFetchRequest(with: NSPredicate(format: "needsToVerifyLegalHold != 0"))
+        //由于ZMConversation的needsToVerifyLegalHold属性默认为nil，所以判断不为0的话则会一直校验合法性，
+        //会导致万人群拉取所有人的设备信息
+        return ZMConversation.sortedFetchRequest(with: NSPredicate(format: "needsToVerifyLegalHold = 1"))
     }
     
     public func addTrackedObjects(_ objects: Set<NSManagedObject>) {
@@ -75,7 +78,8 @@ extension VerifyLegalHoldRequestStrategy: IdentifierObjectSyncTranscoder {
     
     public func request(for identifiers: Set<ZMConversation>) -> ZMTransportRequest? {
         guard let conversationID = identifiers.first?.remoteIdentifier, identifiers.count == 1,
-              let selfClient = ZMUser.selfUser(in: managedObjectContext).selfClient()
+              let selfClient = ZMUser.selfUser(in: managedObjectContext).selfClient(),
+              identifiers.first?.conversationType != .hugeGroup ///新增此行判断，万人群则不去请求设备信息
         else { return nil }
         
         return requestFactory.upstreamRequestForFetchingClients(conversationId: conversationID, selfClient: selfClient)
