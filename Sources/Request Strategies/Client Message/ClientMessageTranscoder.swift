@@ -102,12 +102,13 @@ extension ClientMessageTranscoder: ZMUpstreamTranscoder {
             }
         }
 
-        if let legalHoldStatus = message.conversation?.legalHoldStatus {
-            // Update the legalHoldStatus flag to reflect the current known legal hold status
-            if let updatedGenericMessage = message.genericMessage?.setLegalHoldStatus(legalHoldStatus.denotesEnabledComplianceDevice ? .ENABLED : .DISABLED) {
-                message.add(updatedGenericMessage.data())
-            }
-        }
+        //取消消息“法律保障”属性的设置
+//        if let legalHoldStatus = message.conversation?.legalHoldStatus {
+//            // Update the legalHoldStatus flag to reflect the current known legal hold status
+//            if let updatedGenericMessage = message.genericMessage?.setLegalHoldStatus(legalHoldStatus.denotesEnabledComplianceDevice ? .ENABLED : .DISABLED) {
+//                message.add(updatedGenericMessage.data())
+//            }
+//        }
 
         let request = conversation.conversationType == .hugeGroup
             ? requestFactory.upstreamRequestForUnencryptedClientMessage(message, forConversationWithId: cid)!

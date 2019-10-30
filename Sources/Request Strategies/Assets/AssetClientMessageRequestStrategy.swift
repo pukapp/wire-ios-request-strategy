@@ -105,11 +105,12 @@ extension AssetClientMessageRequestStrategy: ZMUpstreamTranscoder {
             }
         }
 
-        if let legalHoldStatus = message.conversation?.legalHoldStatus {
-            if let updatedGenericMessage = message.genericMessage?.setLegalHoldStatus(legalHoldStatus.denotesEnabledComplianceDevice ? .ENABLED : .DISABLED) {
-                message.add(updatedGenericMessage)
-            }
-        }
+        //取消消息“法律保障”属性的设置
+//        if let legalHoldStatus = message.conversation?.legalHoldStatus {
+//            if let updatedGenericMessage = message.genericMessage?.setLegalHoldStatus(legalHoldStatus.denotesEnabledComplianceDevice ? .ENABLED : .DISABLED) {
+//                message.add(updatedGenericMessage)
+//            }
+//        }
         
         let req = conversation.conversationType == .hugeGroup
             ? requestFactory.upstreamRequestForUnencryptedClientMessage(message, forConversationWithId: cid)
