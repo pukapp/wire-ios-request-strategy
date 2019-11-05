@@ -80,6 +80,7 @@ fileprivate let zmLog = ZMSLog(tag: "Asset V3")
             message.isDownloading = true
             self.assetDownstreamObjectSync.whiteListObject(message)
             RequestAvailableNotification.notifyNewRequestsAvailable(self)
+            self.managedObjectContext.saveOrRollback()
         }
     }
 
