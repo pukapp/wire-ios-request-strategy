@@ -163,7 +163,7 @@ extension ClientMessageTranscoder {
              .conversationOtrMessageAdd,
              .conversationOtrAssetAdd,
              .conversationWalletNotify,
-             .conversationUserServiceNoticeAdd,
+             .conversationServiceMessageAdd,
              .conversationMemberJoinask,
              .conversationBgpMessageAdd:
             
