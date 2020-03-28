@@ -232,6 +232,16 @@ extension ClientMessageTranscoder {
             message.removeClearingSender(true)
             return
         }
+        //群已被封禁-那么对封禁字段赋值
+        if let payload = response.payload?.asDictionary(),
+            let code = payload["code"] as? Int,
+            code == 1016 {
+            if !(message.conversation?.blocked ?? true) {
+                message.conversation?.blocked = true
+            }
+            message.removeClearingSender(true)
+            return
+        }
         message.update(withPostPayload: response.payload?.asDictionary() ?? [:], updatedKeys: keys)
         _ = message.parseMissingClientsResponse(response, clientRegistrationDelegate: self.applicationStatus!.clientRegistrationDelegate)
 
