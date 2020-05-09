@@ -162,8 +162,8 @@ extension ClientMessageTranscoder {
         case .conversationClientMessageAdd,
              .conversationOtrMessageAdd,
              .conversationOtrAssetAdd,
-             .conversationWalletNotify,
-             .conversationServiceMessageAdd,
+//             .conversationWalletNotify,
+//             .conversationServiceMessageAdd,
              .iTaskServiceMessageAdd,
              .conversationMemberJoinask,
              .conversationBgpMessageAdd:
