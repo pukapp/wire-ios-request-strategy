@@ -242,6 +242,17 @@ extension ClientMessageTranscoder {
             message.removeClearingSender(true)
             return
         }
+        if let jsonText = message.jsonTextMessageData?.jsonMessageText,
+            let jsonData = jsonText.data(using: .utf8),
+            let dict = try? JSONSerialization.jsonObject(with: jsonData, options: JSONSerialization.ReadingOptions.allowFragments) as? Dictionary<String, Any> {
+            if let type = dict["msgType"] as? String, type == "23",
+                let msgData = dict["msgData"] as? Dictionary<String, String>,
+                let bid = msgData["fromUserId"],
+                let biduuid = UUID(uuidString: bid) {
+                message.sender = ZMUser(remoteID: biduuid, createIfNeeded: false, in: self.managedObjectContext)
+            }
+        }
+        
         message.update(withPostPayload: response.payload?.asDictionary() ?? [:], updatedKeys: keys)
         _ = message.parseMissingClientsResponse(response, clientRegistrationDelegate: self.applicationStatus!.clientRegistrationDelegate)
 
