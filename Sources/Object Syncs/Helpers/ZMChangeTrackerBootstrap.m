@@ -112,13 +112,31 @@
     NSMapTable *resultsMap = [NSMapTable strongToStrongObjectsMapTable];
 
     for (NSEntityDescription *entity in entityToRequestsMap) {
+        NSDate *date = [NSDate new];
         NSSet *predicates = [entityToRequestsMap objectForKey:entity];
-        NSFetchRequest *fetchRequest = [self compoundRequestForEntity:entity predicates:predicates];
-        
-        NSArray *result = [self.managedObjectContext executeFetchRequestOrAssert:fetchRequest];
-        if (result.count > 0){
-            [resultsMap setObject:result forKey:entity];
+        if ([entity.name isEqualToString:@"ClientMessage"] || [entity.name isEqualToString:@"AssetClientMessage"]) {
+            NSMutableArray *allResult = [NSMutableArray array];
+            for (NSPredicate *predicate in predicates) {
+                NSDate *date1 = [NSDate new];
+                NSFetchRequest *fetchRequest = [self compoundRequestForEntity:entity predicate:predicate];
+                NSArray *result = [self.managedObjectContext executeFetchRequestOrAssert:fetchRequest];
+                [allResult addObjectsFromArray:result];
+                double time = -[date1 timeIntervalSinceNow];
+                NSLog(@"[Change-Tracker] EntityName: %@, fetchRequestTime: %f, count:%lu, predicate:%@", entity.name, time, result.count, predicate);
+            }
+            if (allResult.count > 0){
+                [resultsMap setObject:allResult forKey:entity];
+            }
+        } else {
+            NSFetchRequest *fetchRequest = [self compoundRequestForEntity:entity predicates:predicates];
+            NSArray *result = [self.managedObjectContext executeFetchRequestOrAssert:fetchRequest];
+            double time = -[date timeIntervalSinceNow];
+            NSLog(@"[Change-Tracker] EntityName: %@, fetchRequestTime: %f, count:%lu, predicate:%@", entity.name, time, result.count, fetchRequest.predicate);
+            if (result.count > 0){
+                [resultsMap setObject:result forKey:entity];
+            }
         }
+        
     }
     
     return resultsMap;
@@ -131,6 +149,16 @@
     NSFetchRequest *fetchRequest = [[NSFetchRequest alloc] init];
     fetchRequest.entity = entity;
     fetchRequest.predicate = compoundPredicate;
+    [fetchRequest configureRelationshipPrefetching];
+    fetchRequest.returnsObjectsAsFaults = NO;
+    return fetchRequest;
+}
+/// 新增的创建单独查询条件
+- (NSFetchRequest *)compoundRequestForEntity:(NSEntityDescription *)entity predicate:(NSPredicate *)predicate
+{
+    NSFetchRequest *fetchRequest = [[NSFetchRequest alloc] init];
+    fetchRequest.entity = entity;
+    fetchRequest.predicate = predicate;
     [fetchRequest configureRelationshipPrefetching];
     fetchRequest.returnsObjectsAsFaults = NO;
     return fetchRequest;
