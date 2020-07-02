@@ -102,12 +102,12 @@ extension MessagingTestBase {
                                              source: ZMUpdateEventSource = .pushNotification
         ) -> ZMUpdateEvent {
         
-        let message = ZMGenericMessage.message(content: ZMText.text(with: text))
+        let message = GenericMessage(content: Text(content: text))
         return self.decryptedUpdateEventFromOtherClient(message: message, conversation: conversation, source: source)
     }
     
     /// Creates an update event with encrypted message from the other client, decrypts it and returns it
-    func decryptedUpdateEventFromOtherClient(message: ZMGenericMessage,
+    func decryptedUpdateEventFromOtherClient(message: GenericMessage,
                                              conversation: ZMConversation? = nil,
                                              source: ZMUpdateEventSource = .pushNotification
         ) -> ZMUpdateEvent {
@@ -124,7 +124,7 @@ extension MessagingTestBase {
     }
     
     /// Creates an update event with encrypted message from the other client, decrypts it and returns it
-    func decryptedAssetUpdateEventFromOtherClient(message: ZMGenericMessage,
+    func decryptedAssetUpdateEventFromOtherClient(message: GenericMessage,
                                              conversation: ZMConversation? = nil,
                                              source: ZMUpdateEventSource = .pushNotification
         ) -> ZMUpdateEvent {
@@ -171,12 +171,12 @@ extension MessagingTestBase {
     /// Extract the outgoing message wrapper (non-encrypted) protobuf
     func outgoingMessageWrapper(from request: ZMTransportRequest,
                                 file: StaticString = #file,
-                                line: UInt = #line) -> ZMNewOtrMessage? {
-        guard let protobuf = ZMNewOtrMessage.parse(from: request.binaryData) else {
+                                line: UInt = #line) -> NewOtrMessage? {
+        guard let data = request.binaryData else {
             XCTFail("No binary data", file: file, line: line)
             return nil
         }
-        return protobuf
+        return try? NewOtrMessage(serializedData: data)
     }
     
     /// Extract encrypted payload from a request
@@ -184,19 +184,15 @@ extension MessagingTestBase {
                                   for client: UserClient,
                                   line: UInt = #line,
                                   file: StaticString = #file
-        ) -> ZMGenericMessage? {
+        ) -> GenericMessage? {
         
-        guard let protobuf = ZMNewOtrMessage.parse(from: request.binaryData) else {
+        guard let data = request.binaryData, let protobuf = try? NewOtrMessage(serializedData: data) else {
             XCTFail("No binary data", file: file, line: line)
             return nil
         }
-        // find user
-        guard let recipients = protobuf.recipients else {
-            XCTFail("Recipients not found")
-            return nil
-        }
-        let userEntries = recipients.compactMap { $0 }
-        guard let userEntry = userEntries.first(where: { $0.user == client.user!.userId() }) else {
+       
+        let userEntries = protobuf.recipients.compactMap { $0 }
+        guard let userEntry = userEntries.first(where: { $0.user == client.user?.userId }) else {
             XCTFail("User not found", file: file, line: line)
             return nil
         }
@@ -207,18 +203,12 @@ extension MessagingTestBase {
         }
         
         // text content
-        guard let cyphertext = clientEntry.text else {
-            XCTFail("No text", file: file, line: line)
-            return nil
-        }
-        guard let plaintext = self.decryptMessageFromSelf(cypherText: cyphertext, to: self.otherClient) else {
+        guard let plaintext = self.decryptMessageFromSelf(cypherText: clientEntry.text, to: self.otherClient) else {
             XCTFail("failed to decrypt", file: file, line: line)
             return nil
         }
-        guard let receivedMessage = ZMGenericMessage.parse(from: plaintext) else {
-            XCTFail("Invalid message")
-            return nil
-        }
+
+        let receivedMessage = try? GenericMessage.init(serializedData: plaintext) 
         return receivedMessage
     }
 }
@@ -233,7 +223,7 @@ extension MessagingTestBase {
         conversation.connection = ZMConnection.insertNewObject(in: self.syncMOC)
         conversation.connection?.to = user
         conversation.connection?.status = .accepted
-        conversation.mutableLastServerSyncedActiveParticipants.add(user)
+        conversation.addParticipantAndUpdateConversationState(user: user, role: nil)
         self.syncMOC.saveOrRollback()
         return conversation
     }
@@ -259,10 +249,12 @@ extension MessagingTestBase {
     
     /// Creates a group conversation with a user
     func createGroupConversation(with user: ZMUser) -> ZMConversation {
-        let conversation = ZMConversation.insertNewObject(in: self.syncMOC)
+        let conversation = ZMConversation.insertNewObject(in: syncMOC)
         conversation.conversationType = .group
         conversation.remoteIdentifier = UUID.create()
-        conversation.mutableLastServerSyncedActiveParticipants.add(user)
+        conversation.addParticipantAndUpdateConversationState(user: user, role: nil)
+        conversation.addParticipantAndUpdateConversationState(user: ZMUser.selfUser(in: syncMOC), role: nil)
+        conversation.needsToBeUpdatedFromBackend = false
         return conversation
     }
     

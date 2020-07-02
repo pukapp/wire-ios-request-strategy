@@ -20,12 +20,12 @@ import Foundation
 
 @objcMembers public class GenericMessageEntity : NSObject, OTREntity {
 
-    public var message : ZMGenericMessage
+    public var message : GenericMessage
     public var conversation : ZMConversation?
     public var completionHandler : ((_ response: ZMTransportResponse) -> Void)?
     public var isExpired: Bool = false
     
-    init(conversation: ZMConversation, message: ZMGenericMessage, completionHandler: ((_ response: ZMTransportResponse) -> Void)?) {
+    init(conversation: ZMConversation, message: GenericMessage, completionHandler: ((_ response: ZMTransportResponse) -> Void)?) {
         self.conversation = conversation
         self.message = message
         self.completionHandler = completionHandler
@@ -45,17 +45,10 @@ import Foundation
         // no-op
     }
     
-    public func detectedRedundantClients() {
-        // if the BE tells us that these users are not in the
-        // conversation anymore, it means that we are out of sync
-        // with the list of participants
-        conversation?.needsToBeUpdatedFromBackend = true
+    public func detectedRedundantUsers(_ users: [ZMUser]) {
+        // no-op
     }
-    
-    public func detectedMissingClient(for user: ZMUser) {
-        conversation?.addParticipantIfMissing(user, date: nil)
-    }
-    
+        
     public func expire() {
         isExpired = true
     }
@@ -74,13 +67,13 @@ extension GenericMessageEntity : EncryptedPayloadGenerator {
     public func encryptedMessagePayloadData() -> (data: Data, strategy: MissingClientsStrategy)? {
         return message.encryptedMessagePayloadData(conversation!, externalData: nil)
     }
-    
+
     public var debugInfo: String {
-        if message.hasCalling() {
+        if case .calling? = message.content {
             return "Calling Message"
-        } else if message.hasClientAction() {
+        } else if case .clientAction? = message.content {
             switch message.clientAction {
-            case .RESETSESSION: return "Reset Session Message"
+            case .resetSession: return "Reset Session Message"
             @unknown default:
                 return "unknown Message"
             }
@@ -105,7 +98,7 @@ extension GenericMessageEntity : EncryptedPayloadGenerator {
         sync = DependencyEntitySync(transcoder: self, context: context)
     }
     
-    public func schedule(message: ZMGenericMessage, inConversation conversation: ZMConversation, completionHandler: ((_ response: ZMTransportResponse) -> Void)?) {
+    public func schedule(message: GenericMessage, inConversation conversation: ZMConversation, completionHandler: ((_ response: ZMTransportResponse) -> Void)?) {
         sync?.synchronize(entity: GenericMessageEntity(conversation: conversation, message: message, completionHandler: completionHandler))
         RequestAvailableNotification.notifyNewRequestsAvailable(nil)
     }

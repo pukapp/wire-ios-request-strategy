@@ -95,8 +95,7 @@ public extension AssetRequestFactory.Retention {
 
 extension ZMConversation {
     var containsTeamUser: Bool {
-        //return lastServerSyncedActiveParticipants.any { ($0 as? ZMUser)?.hasTeam == true }
-        ///TeamUser功能未启用，减少lastServerSyncedActiveParticipants的读取次数
+//        return localParticipants.any { $0.hasTeam }
         return false
     }
     

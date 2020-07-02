@@ -39,7 +39,7 @@ fileprivate let zmLog = ZMSLog(tag: "Asset V3")
             guard let message = object as? ZMAssetClientMessage else { return false }
             guard message.version == 3 else { return false }
             
-            return !message.hasDownloadedFile && message.transferState == .uploaded && message.isDownloading && message.genericMessage?.assetData?.hasUploaded() == true
+            return !message.hasDownloadedFile && message.transferState == .uploaded && message.isDownloading && message.underlyingMessage?.assetData?.hasUploaded == true
         }
         
         assetDownstreamObjectSync = ZMDownstreamObjectSyncWithWhitelist(transcoder: self,
@@ -97,7 +97,7 @@ fileprivate let zmLog = ZMSLog(tag: "Asset V3")
     }
 
     public override func nextRequestIfAllowed() -> ZMTransportRequest? {
-        return self.assetDownstreamObjectSync.nextRequest()
+        return assetDownstreamObjectSync.nextRequest()
     }
 
     fileprivate func handleResponse(_ response: ZMTransportResponse, forMessage assetClientMessage: ZMAssetClientMessage) {
@@ -108,7 +108,11 @@ fileprivate let zmLog = ZMSLog(tag: "Asset V3")
         if response.result == .success {
             downloadSuccess = storeAndDecrypt(data: response.rawData!, for: assetClientMessage)
         }
-        else if response.result == .permanentError {
+//        When the backend redirects to the cloud service to get the image, it could be that the
+//        network bandwidth of the device is really bad. If the time interval is pretty long before
+//        the connectivity returns, the cloud responds with an error having status code 403
+//        -> retry the image request and do not delete the asset client message.
+        else if response.result == .permanentError, response.httpStatus != 403 {
             zmLog.debug("asset unavailable on remote (\(response.httpStatus)), deleting")
             managedObjectContext.delete(assetClientMessage)
         }
@@ -128,11 +132,11 @@ fileprivate let zmLog = ZMSLog(tag: "Asset V3")
     }
 
     private func storeAndDecrypt(data: Data, for message: ZMAssetClientMessage) -> Bool {
-        guard let genericMessage = message.genericAssetMessage,
+        guard let genericMessage = message.underlyingMessage,
               let asset = genericMessage.assetData
         else { return false }
 
-        let keys = (asset.uploaded.otrKey!, asset.uploaded.sha256!)
+        let keys = (asset.uploaded.otrKey, asset.uploaded.sha256)
 
         if asset.original.hasRasterImage {
             return storeAndDecryptImage(asset: asset, message: message, data: data, keys: keys)
@@ -141,7 +145,7 @@ fileprivate let zmLog = ZMSLog(tag: "Asset V3")
         }
     }
 
-    private func storeAndDecryptImage(asset: ZMAsset, message: ZMAssetClientMessage, data: Data, keys: DecryptionKeys) -> Bool {
+    private func storeAndDecryptImage(asset: WireProtos.Asset, message: ZMAssetClientMessage, data: Data, keys: DecryptionKeys) -> Bool {
         precondition(asset.original.hasRasterImage, "Should only be called for assets with image")
 
         let cache = managedObjectContext.zm_fileAssetCache
@@ -153,7 +157,7 @@ fileprivate let zmLog = ZMSLog(tag: "Asset V3")
         return success
     }
 
-    private func storeAndDecryptFile(asset: ZMAsset, message: ZMAssetClientMessage, data: Data, keys: DecryptionKeys) -> Bool {
+    private func storeAndDecryptFile(asset: WireProtos.Asset, message: ZMAssetClientMessage, data: Data, keys: DecryptionKeys) -> Bool {
         precondition(!asset.original.hasRasterImage, "Should not be called for assets with image")
 
         let cache = managedObjectContext.zm_fileAssetCache
@@ -189,9 +193,9 @@ fileprivate let zmLog = ZMSLog(tag: "Asset V3")
                 self.managedObjectContext.enqueueDelayedSave()
             }
 
-            if let asset = assetClientMessage.genericAssetMessage?.assetData {
-                let token = asset.uploaded.hasAssetToken() ? asset.uploaded.assetToken : nil
-                if let request = AssetDownloadRequestFactory().requestToGetAsset(withKey: asset.uploaded.assetId, token: token) {
+            if let asset = assetClientMessage.underlyingMessage?.assetData {
+                let token = asset.uploaded.hasAssetToken ? asset.uploaded.assetToken : nil
+                if let request = AssetDownloadRequestFactory().requestToGetAsset(withKey: asset.uploaded.assetID, token: token) {
                     request.add(taskCreationHandler)
                     request.add(completionHandler)
                     request.add(progressHandler)

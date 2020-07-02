@@ -81,7 +81,8 @@ extension EncryptionSessionsDirectory {
     
     /// Appends a system message for a failed decryption
     fileprivate func appendFailedToDecryptMessage(after error: CBoxResult?, for event: ZMUpdateEvent, sender: UserClient, in moc: NSManagedObjectContext) {
-        zmLog.error("Failed to decrypt message with error: \(String(describing: error)), client id \(sender.remoteIdentifier!), event debug: \(event.debugInformation)")
+        zmLog.safePublic("Failed to decrypt message with error: \(error), client id <\(sender.safeRemoteIdentifier))>")
+        zmLog.error("event debug: \(event.debugInformation)")
         if error == CBOX_OUTDATED_MESSAGE || error == CBOX_DUPLICATE_MESSAGE {
             return // do not notify the user if the error is just "duplicated"
         }
@@ -119,7 +120,7 @@ extension EncryptionSessionsDirectory {
         
         /// Check if it's the "bomb" message (gave encrypting on the sender)
         guard encryptedData != ZMFailedToCreateEncryptedMessagePayloadString.data(using: .utf8) else {
-            zmLog.error("Received 'failed to encrypt for your client' special payload (bomb) from \(sessionIdentifier). Current device might have invalid prekeys on the BE.")
+            zmLog.safePublic("Received 'failed to encrypt for your client' special payload (bomb) from \(sessionIdentifier). Current device might have invalid prekeys on the BE.")
             return nil
         }
 
