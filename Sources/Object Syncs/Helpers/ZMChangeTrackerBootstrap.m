@@ -122,7 +122,7 @@
                 NSArray *result = [self.managedObjectContext executeFetchRequestOrAssert:fetchRequest];
                 [allResult addObjectsFromArray:result];
                 double time = -[date1 timeIntervalSinceNow];
-                NSLog(@"[Change-Tracker] EntityName: %@, fetchRequestTime: %f, count:%lu, predicate:%@", entity.name, time, result.count, predicate);
+                NSLog(@"[Change-Tracker] EntityName: %@, fetchRequestTime: %f, count:%lu, predicate:%@", entity.name, time, (unsigned long)result.count, predicate);
             }
             if (allResult.count > 0){
                 [resultsMap setObject:allResult forKey:entity];
@@ -131,7 +131,7 @@
             NSFetchRequest *fetchRequest = [self compoundRequestForEntity:entity predicates:predicates];
             NSArray *result = [self.managedObjectContext executeFetchRequestOrAssert:fetchRequest];
             double time = -[date timeIntervalSinceNow];
-            NSLog(@"[Change-Tracker] EntityName: %@, fetchRequestTime: %f, count:%lu, predicate:%@", entity.name, time, result.count, fetchRequest.predicate);
+            NSLog(@"[Change-Tracker] EntityName: %@, fetchRequestTime: %f, count:%lu, predicate:%@", entity.name, time, (unsigned long)result.count, fetchRequest.predicate);
             if (result.count > 0){
                 [resultsMap setObject:result forKey:entity];
             }
