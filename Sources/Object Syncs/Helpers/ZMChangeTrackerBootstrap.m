@@ -114,7 +114,7 @@
     for (NSEntityDescription *entity in entityToRequestsMap) {
         NSDate *date = [NSDate new];
         NSSet *predicates = [entityToRequestsMap objectForKey:entity];
-        if ([entity.name isEqualToString:@"ClientMessage"]) {
+        if ([entity.name isEqualToString:@"ClientMessage"] || [entity.name isEqualToString:@"Message"]) {
             NSMutableArray *allResult = [NSMutableArray array];
             for (NSPredicate *predicate in predicates) {
                 NSDate *date1 = [NSDate new];

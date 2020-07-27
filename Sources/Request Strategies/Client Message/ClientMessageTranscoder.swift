@@ -58,9 +58,15 @@ public class ClientMessageTranscoder: AbstractRequestStrategy {
     
     static var insertFilter: NSPredicate {
         return NSPredicate { object, _ in
-            guard let message = object as? ZMMessage, let sender = message.sender  else { return false }
-            
-            return sender.isSelfUser
+            if  let message = object as? ZMMessage,
+                let sender = message.sender,
+                sender.isSelfUser,
+                message.delivered == false,
+                message.isExpired == false
+                {
+                return true
+            }
+            return false
         }
     }
 }
