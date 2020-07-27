@@ -150,9 +150,9 @@ fileprivate final class UserClientByUserClientIDTranscoder: IdentifierObjectSync
         } else if let payload = response.payload as? [String: AnyObject] {
             client.update(with: payload)
             
-            let selfClient = ZMUser.selfUser(in: managedObjectContext).selfClient()
+//            let selfClient = ZMUser.selfUser(in: managedObjectContext).selfClient()
             
-            selfClient?.updateSecurityLevelAfterDiscovering(Set(arrayLiteral: client))
+//            selfClient?.updateSecurityLevelAfterDiscovering(Set(arrayLiteral: client))
         }
     }
 }
