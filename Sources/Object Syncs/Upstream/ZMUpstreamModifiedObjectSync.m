@@ -255,9 +255,10 @@ ZM_EMPTY_ASSERTING_INIT();
     [request.transportRequest setDebugInformationTranscoder:transcoder];
     
     if (request == nil) {
-        RequireString(request != nil, "Transcoder %s returns nil request for keys: %s",
-                      NSStringFromClass(transcoder.class).UTF8String,
-                      [objectWithKeys.keysToSync.allObjects componentsJoinedByString:@", "].UTF8String);
+//        RequireString(request != nil, "Transcoder %s returns nil request for keys: %s",
+//                      NSStringFromClass(transcoder.class).UTF8String,
+//                      [objectWithKeys.keysToSync.allObjects componentsJoinedByString:@", "].UTF8String);
+        return nil;
     }
     
     ZMModifiedObjectSyncToken *token = [self.updatedObjects didStartSynchronizingKeys:request.keys forObject:objectWithKeys];
