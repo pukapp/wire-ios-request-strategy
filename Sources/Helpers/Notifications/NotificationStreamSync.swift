@@ -54,12 +54,21 @@ public class NotificationStreamSync: NSObject, ZMRequestGenerator, ZMSimpleListR
                                                           managedObjectContext: moc,
                                                           includeClientID: true,
                                                           transcoder: self)
+        listPaginator.resetFetching()
         self.notificationsTracker = notificationsTracker
         notificationStreamSyncDelegate = delegate
         lastUpdateEventID = self.managedObjectContext.zm_lastNotificationID
     }
     
     public func nextRequest() -> ZMTransportRequest? {
+        
+        if listPaginator.status == ZMSingleRequestProgress.inProgress {
+            return nil
+        }
+        
+        if !listPaginator.hasMoreToFetch {
+            return nil
+        }
         
        // We only reset the paginator if it is neither in progress nor has more pages to fetch.
         if listPaginator.status != ZMSingleRequestProgress.inProgress && !listPaginator.hasMoreToFetch {
@@ -111,13 +120,15 @@ public class NotificationStreamSync: NSObject, ZMRequestGenerator, ZMSimpleListR
         guard let eventsDictionaries = eventDictionariesFrom(payload: payload) else {
             return nil
         }
+        var pEvents: [ZMUpdateEvent] = []
         for eventDictionary in eventsDictionaries {
             guard let events = ZMUpdateEvent.eventsArray(from: eventDictionary as ZMTransportData, source: source) else {
                 return nil
             }
-            notificationStreamSyncDelegate?.fetchedEvents(events, hasMoreToFetch: !self.listPaginator.hasMoreToFetch)
-            latestEventId = events.last(where: { !$0.isTransient })?.uuid
+            pEvents.append(contentsOf: events)
         }
+        notificationStreamSyncDelegate?.fetchedEvents(pEvents, hasMoreToFetch: !self.listPaginator.hasMoreToFetch)
+        latestEventId = pEvents.last(where: { !$0.isTransient })?.uuid
         
         //        ZMLogWithLevelAndTag(ZMLogLevelInfo, ZMTAG_EVENT_PROCESSING, @"Downloaded %lu event(s)", (unsigned long)parsedEvents.count);
         
@@ -153,6 +164,10 @@ public class NotificationStreamSync: NSObject, ZMRequestGenerator, ZMSimpleListR
             }
             ZMConversation.appendNewPotentialGapSystemMessage(at: timestamp, inContext: self.managedObjectContext)
         }
+    }
+    
+    public func startUUID() -> UUID! {
+        return self.managedObjectContext.zm_lastNotificationID
     }
 }
 
