@@ -66,13 +66,13 @@ public class NotificationStreamSync: NSObject, ZMRequestGenerator, ZMSimpleListR
             return nil
         }
         
-        if !listPaginator.hasMoreToFetch {
-            return nil
-        }
-        
        // We only reset the paginator if it is neither in progress nor has more pages to fetch.
         if listPaginator.status != ZMSingleRequestProgress.inProgress && !listPaginator.hasMoreToFetch {
             listPaginator.resetFetching()
+        }
+        
+        if !listPaginator.hasMoreToFetch {
+            return nil
         }
         
         guard let request = listPaginator.nextRequest() else {
@@ -131,7 +131,11 @@ public class NotificationStreamSync: NSObject, ZMRequestGenerator, ZMSimpleListR
         latestEventId = pEvents.last(where: { !$0.isTransient })?.uuid
         
         //        ZMLogWithLevelAndTag(ZMLogLevelInfo, ZMTAG_EVENT_PROCESSING, @"Downloaded %lu event(s)", (unsigned long)parsedEvents.count);
-        
+        if let lid = latestEventId {
+            self.managedObjectContext.zm_lastNotificationID = lid
+            print("lid------\(lid)")
+            self.managedObjectContext.saveOrRollback()
+        }
         tp?.warnIfLongerThanInterval()
         return latestEventId
     }
