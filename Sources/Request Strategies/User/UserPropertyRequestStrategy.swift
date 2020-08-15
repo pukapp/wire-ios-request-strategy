@@ -131,7 +131,7 @@ public class UserPropertyRequestStrategy : AbstractRequestStrategy {
     fileprivate var fetchedProperty: UserProperty? = nil
 
     override public init(withManagedObjectContext managedObjectContext: NSManagedObjectContext,
-                         applicationStatus: ApplicationStatus) {
+                         applicationStatus: ApplicationStatus?) {
         
         super.init(withManagedObjectContext: managedObjectContext, applicationStatus: applicationStatus)
         

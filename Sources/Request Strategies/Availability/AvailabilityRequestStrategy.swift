@@ -22,7 +22,7 @@ public class AvailabilityRequestStrategy : AbstractRequestStrategy {
     
     var modifiedSync : ZMUpstreamModifiedObjectSync!
     
-    override public init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
+    override public init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         
         super.init(withManagedObjectContext: managedObjectContext, applicationStatus: applicationStatus)
         self.modifiedSync = ZMUpstreamModifiedObjectSync(transcoder: self,

@@ -28,7 +28,7 @@ private let zmLog = ZMSLog(tag: "AssetPreviewDownloading")
     fileprivate var downstreamSync: ZMDownstreamObjectSyncWithWhitelist!
     private var token: Any? = nil
     
-    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
+    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         super.init(withManagedObjectContext: managedObjectContext, applicationStatus: applicationStatus)
 
         let filter = NSPredicate { object, _ in
