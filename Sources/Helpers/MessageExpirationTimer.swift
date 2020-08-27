@@ -20,7 +20,7 @@ import Foundation
 
 public class MessageExpirationTimer: ZMMessageTimer, ZMContextChangeTracker {
     
-    let localNotificationsDispatcher: PushMessageHandler
+    let localNotificationsDispatcher: PushMessageHandler?
     let entityNames: [String]
     let filter: NSPredicate?
     
@@ -28,7 +28,7 @@ public class MessageExpirationTimer: ZMMessageTimer, ZMContextChangeTracker {
         fatalError("Should not use this init")
     }
     
-    public init(moc: NSManagedObjectContext, entityNames: [String], localNotificationDispatcher: PushMessageHandler, filter: NSPredicate? = nil) {
+    public init(moc: NSManagedObjectContext, entityNames: [String], localNotificationDispatcher: PushMessageHandler?, filter: NSPredicate? = nil) {
         self.localNotificationsDispatcher = localNotificationDispatcher
         self.entityNames = entityNames
         self.filter = filter
@@ -46,7 +46,7 @@ public class MessageExpirationTimer: ZMMessageTimer, ZMContextChangeTracker {
         }
         message.expire()
         message.managedObjectContext?.enqueueDelayedSave()
-        self.localNotificationsDispatcher.didFailToSend(message)
+        self.localNotificationsDispatcher?.didFailToSend(message)
         RequestAvailableNotification.notifyNewRequestsAvailable(self)
     }
     

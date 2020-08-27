@@ -30,7 +30,7 @@ fileprivate let zmLog = ZMSLog(tag: "Asset V3")
 
     private typealias DecryptionKeys = (otrKey: Data, sha256: Data)
     
-    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
+    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         super.init(withManagedObjectContext: managedObjectContext, applicationStatus: applicationStatus)
 
         configuration = .allowsRequestsDuringEventProcessing

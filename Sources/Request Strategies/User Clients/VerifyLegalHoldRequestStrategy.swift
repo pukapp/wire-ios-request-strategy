@@ -30,7 +30,7 @@ public final class VerifyLegalHoldRequestStrategy: AbstractRequestStrategy {
         return conversationSync.nextRequest()
     }
     
-    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
+    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         super.init(withManagedObjectContext: managedObjectContext, applicationStatus: applicationStatus)
         
         configuration = [.allowsRequestsDuringEventProcessing, .allowsRequestsDuringNotificationStreamFetch, .allowsRequestsWhileInBackground]

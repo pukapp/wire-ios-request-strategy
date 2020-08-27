@@ -26,7 +26,7 @@ import Foundation
     fileprivate let assetRequestFactory = AssetDownloadRequestFactory()
     private var notificationToken: Any? = nil
 
-    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
+    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         super.init(withManagedObjectContext: managedObjectContext, applicationStatus: applicationStatus)
         
         let downloadFilter = NSPredicate { object, _ in

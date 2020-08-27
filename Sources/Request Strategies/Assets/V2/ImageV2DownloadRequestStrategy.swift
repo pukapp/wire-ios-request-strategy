@@ -24,7 +24,7 @@ public final class ImageV2DownloadRequestStrategy : AbstractRequestStrategy {
     fileprivate let requestFactory : ClientMessageRequestFactory = ClientMessageRequestFactory()
     private var token: Any? = nil
 
-    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
+    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         super.init(withManagedObjectContext: managedObjectContext, applicationStatus: applicationStatus)
         
         let downloadPredicate = NSPredicate { (object, _) -> Bool in

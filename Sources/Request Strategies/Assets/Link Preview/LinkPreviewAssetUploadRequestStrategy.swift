@@ -71,7 +71,7 @@ public final class LinkPreviewAssetUploadRequestStrategy : AbstractRequestStrate
     fileprivate var assetUpstreamSync : ZMUpstreamModifiedObjectSync!
     
     @available(*, unavailable)
-    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
+    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         fatalError()
     }
     

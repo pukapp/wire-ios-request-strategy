@@ -48,7 +48,7 @@ public final class FetchingClientRequestStrategy : AbstractRequestStrategy {
     fileprivate var userClientByUserIDTranscoder: UserClientByUserIDTranscoder
     fileprivate var userClientByUserClientIDTranscoder: UserClientByUserClientIDTranscoder
     
-    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
+    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         
         self.userClientByUserIDTranscoder = UserClientByUserIDTranscoder(managedObjectContext: managedObjectContext)
         self.userClientByUserClientIDTranscoder = UserClientByUserClientIDTranscoder(managedObjectContext: managedObjectContext)

@@ -48,7 +48,7 @@ public final class MissingClientsRequestStrategy: AbstractRequestStrategy, ZMUps
     fileprivate(set) var modifiedSync: ZMUpstreamModifiedObjectSync! = nil
     public var requestsFactory = MissingClientsRequestFactory()
     
-    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
+    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         super.init(withManagedObjectContext: managedObjectContext, applicationStatus: applicationStatus)
         
         self.configuration =  [

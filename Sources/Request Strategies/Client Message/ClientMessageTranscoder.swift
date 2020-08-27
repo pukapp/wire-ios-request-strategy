@@ -30,11 +30,11 @@ public class ClientMessageTranscoder: AbstractRequestStrategy {
     private(set) fileprivate var upstreamObjectSync: ZMUpstreamInsertedObjectSync!
     fileprivate let messageExpirationTimer: MessageExpirationTimer
     fileprivate let linkAttachmentsPreprocessor: LinkAttachmentsPreprocessor
-    fileprivate weak var localNotificationDispatcher: PushMessageHandler!
+    fileprivate weak var localNotificationDispatcher: PushMessageHandler?
     
     public init(in moc:NSManagedObjectContext,
-         localNotificationDispatcher: PushMessageHandler,
-         applicationStatus: ApplicationStatus)
+         localNotificationDispatcher: PushMessageHandler?,
+         applicationStatus: ApplicationStatus?)
     {
         self.localNotificationDispatcher = localNotificationDispatcher
         self.requestFactory = ClientMessageRequestFactory()
@@ -148,7 +148,7 @@ extension ClientMessageTranscoder: ZMUpstreamTranscoder {
     public func requestExpired(for managedObject: ZMManagedObject, forKeys keys: Set<String>) {
         guard let message = managedObject as? ZMOTRMessage else { return }
         message.expire()
-        self.localNotificationDispatcher.didFailToSend(message)
+        self.localNotificationDispatcher?.didFailToSend(message)
     }
     
     public func objectToRefetchForFailedUpdate(of managedObject: ZMManagedObject) -> ZMManagedObject? {
@@ -177,7 +177,7 @@ extension ClientMessageTranscoder {
             // a the event from a deleted message wouldn't delete the notification.
             if event.source == .pushNotification || event.source == .webSocket {
                 if let genericMessage = ZMGenericMessage(from: event) {
-                    self.localNotificationDispatcher.process(genericMessage)
+                    self.localNotificationDispatcher?.process(genericMessage)
                 }
             }
             
@@ -186,7 +186,7 @@ extension ClientMessageTranscoder {
             message.markAsSent()
             
             if event.source == .pushNotification || event.source == .webSocket {
-                self.localNotificationDispatcher.process(message)
+                self.localNotificationDispatcher?.process(message)
             }
             
         default:

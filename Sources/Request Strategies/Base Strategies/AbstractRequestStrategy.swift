@@ -27,7 +27,7 @@ private let zmLog = ZMSLog(tag: "Request Configuration")
     public let managedObjectContext : NSManagedObjectContext
     public var configuration : ZMStrategyConfigurationOption = [.allowsRequestsDuringEventProcessing, .allowsRequestsDuringNotificationStreamFetch]
     
-    public init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
+    public init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         self.managedObjectContext = managedObjectContext
         self.applicationStatus = applicationStatus
         

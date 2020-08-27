@@ -50,4 +50,4 @@ FOUNDATION_EXPORT const unsigned char WireRequestStrategyVersionString[];
 #import <WireRequestStrategy/ZMStrategyConfigurationOption.h>
 #import <WireRequestStrategy/ZMAbstractRequestStrategy.h>
 #import <WireRequestStrategy/RequestStrategy.h>
-
+#import <WireRequestStrategy/ZMSimpleListRequestPaginator.h>
