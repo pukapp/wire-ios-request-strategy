@@ -66,8 +66,8 @@ extension EventDecoder {
         
         eventMOC.performGroupedBlockAndWait {
             
-            self.storeReceivedPushEventIDs(from: events)
             let filteredEvents = self.filterAlreadyReceivedEvents(from: events)
+            self.storeReceivedPushEventIDs(from: events)
             
             // Get the highest index of events in the DB
             lastIndex = StoredUpdateEvent.highestIndex(self.eventMOC)
@@ -184,9 +184,10 @@ extension EventDecoder {
     }
     
     /// Store received event IDs
+    /// 保存事件id时考虑来自downland没处理完的情况，
     fileprivate func storeReceivedPushEventIDs(from: [ZMUpdateEvent]) {
         let uuidToAdd = from
-            .filter { $0.source == .pushNotification }
+            .filter { $0.source != .webSocket}
             .compactMap { $0.uuid }
             .map { $0.transportString() }
         let allUuidStrings = self.alreadyReceivedPushEventIDsStrings.union(uuidToAdd)
@@ -195,10 +196,11 @@ extension EventDecoder {
     }
     
     /// Filters out events that have been received before
+    /// 过滤消息时考虑上次没处理完的情况（来自downland），避免重复保存的通知事件
     fileprivate func filterAlreadyReceivedEvents(from: [ZMUpdateEvent]) -> [ZMUpdateEvent] {
         let eventIDsToDiscard = self.alreadyReceivedPushEventIDs
         return from.compactMap { event -> ZMUpdateEvent? in
-            if event.source != .pushNotification, let uuid = event.uuid {
+            if /*event.source != .pushNotification, */let uuid = event.uuid {
                 return eventIDsToDiscard.contains(uuid) ? nil : event
             } else {
                 return event
