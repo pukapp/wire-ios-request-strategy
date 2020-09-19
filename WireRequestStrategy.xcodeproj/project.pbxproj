@@ -109,6 +109,8 @@
 		A030790A24D81283008D2561 /* NSManagedObjectContext+EventDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A030790424D81283008D2561 /* NSManagedObjectContext+EventDecoder.swift */; };
 		A030790B24D81283008D2561 /* StoreUpdateEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A030790524D81283008D2561 /* StoreUpdateEvent.swift */; };
 		A030790C24D81283008D2561 /* EventDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A030790624D81283008D2561 /* EventDecoder.swift */; };
+		A09BA2532512139F003DE145 /* NotificationSingleSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = A09BA2522512139F003DE145 /* NotificationSingleSync.swift */; };
+		A0DA4ADA25147D8800B3E17F /* EventDecrypter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0DA4AD925147D8800B3E17F /* EventDecrypter.swift */; };
 		BF1F52C61ECC74E5002FB553 /* Array+RequestGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF1F52C51ECC74E5002FB553 /* Array+RequestGenerator.swift */; };
 		BF7D9BE11D8C351900949267 /* WireRequestStrategy.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1669016A1D707509000FE4AF /* WireRequestStrategy.framework */; };
 		BF7D9BEA1D8C353A00949267 /* OCMock.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BF66512F1D8C2ED50074F367 /* OCMock.framework */; };
@@ -362,6 +364,8 @@
 		A030790424D81283008D2561 /* NSManagedObjectContext+EventDecoder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "NSManagedObjectContext+EventDecoder.swift"; sourceTree = "<group>"; };
 		A030790524D81283008D2561 /* StoreUpdateEvent.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StoreUpdateEvent.swift; sourceTree = "<group>"; };
 		A030790624D81283008D2561 /* EventDecoder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = EventDecoder.swift; sourceTree = "<group>"; };
+		A09BA2522512139F003DE145 /* NotificationSingleSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSingleSync.swift; sourceTree = "<group>"; };
+		A0DA4AD925147D8800B3E17F /* EventDecrypter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDecrypter.swift; sourceTree = "<group>"; };
 		BF1F52C51ECC74E5002FB553 /* Array+RequestGenerator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "Array+RequestGenerator.swift"; sourceTree = "<group>"; };
 		BF66512F1D8C2ED50074F367 /* OCMock.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OCMock.framework; path = Carthage/Build/iOS/OCMock.framework; sourceTree = "<group>"; };
 		BF6651311D8C2ED50074F367 /* PINCache.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = PINCache.framework; path = Carthage/Build/iOS/PINCache.framework; sourceTree = "<group>"; };
@@ -625,6 +629,7 @@
 			children = (
 				A03078DB24D7F818008D2561 /* NotificationsTracker.swift */,
 				A03078DA24D7F818008D2561 /* NotificationStreamSync.swift */,
+				A09BA2522512139F003DE145 /* NotificationSingleSync.swift */,
 				A03078D924D7F817008D2561 /* PushNotificationStatus.swift */,
 			);
 			path = Notifications;
@@ -649,6 +654,7 @@
 		A030790024D81259008D2561 /* Decoding */ = {
 			isa = PBXGroup;
 			children = (
+				A0DA4AD925147D8800B3E17F /* EventDecrypter.swift */,
 				A030790624D81283008D2561 /* EventDecoder.swift */,
 				A030790424D81283008D2561 /* NSManagedObjectContext+EventDecoder.swift */,
 				A030790524D81283008D2561 /* StoreUpdateEvent.swift */,
@@ -1223,11 +1229,13 @@
 				16FFDE441DF6C668003494D6 /* DependencyEntitySync.swift in Sources */,
 				166901E41D7081C7000FE4AF /* ZMSingleRequestSync.m in Sources */,
 				F18401BA2073BE0800E9F4CC /* LinkPreviewUploadRequestStrategy.swift in Sources */,
+				A09BA2532512139F003DE145 /* NotificationSingleSync.swift in Sources */,
 				16A86B2722A128A800A674F8 /* IdentifierObjectSync.swift in Sources */,
 				A030790824D81283008D2561 /* ZMEventModel.xcdatamodeld in Sources */,
 				F18401C82073BE0800E9F4CC /* AssetDownloadRequestFactory.swift in Sources */,
 				A03078EF24D802CE008D2561 /* Logging.swift in Sources */,
 				166901F51D7081C7000FE4AF /* ZMUpstreamRequest.m in Sources */,
+				A0DA4ADA25147D8800B3E17F /* EventDecrypter.swift in Sources */,
 				F18401B42073BE0800E9F4CC /* ZMAbstractRequestStrategy.m in Sources */,
 				F18401D82073BE0800E9F4CC /* ZMConversation+Notifications.swift in Sources */,
 				F18401D92073BE0800E9F4CC /* EncryptionSessionDirectory+UpdateEvents.swift in Sources */,

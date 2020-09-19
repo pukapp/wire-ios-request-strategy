@@ -26,8 +26,11 @@ public protocol PreviouslyReceivedEventIDsCollection: NSObjectProtocol {
 
 @objc
 public protocol UpdateEventProcessor: class {
+    @objc(decryptUpdateEvents:ignoreBuffer:)
+    func decryptUpdateEvents(_ updateEvents: [ZMUpdateEvent], ignoreBuffer: Bool)
+    
     @objc(processUpdateEvents:ignoreBuffer:)
-    func process(updateEvents: [ZMUpdateEvent], ignoreBuffer: Bool)
+    func processUpdateEvents(_ updateEvents: [ZMUpdateEvent], ignoreBuffer: Bool)
 }
 
 public protocol NotificationStreamSyncDelegate: class {
@@ -63,15 +66,6 @@ public class NotificationStreamSync: NSObject, ZMRequestGenerator, ZMSimpleListR
     public func nextRequest() -> ZMTransportRequest? {
         
         if listPaginator.status == ZMSingleRequestProgress.inProgress {
-            return nil
-        }
-        
-       // We only reset the paginator if it is neither in progress nor has more pages to fetch.
-        if listPaginator.status != ZMSingleRequestProgress.inProgress && !listPaginator.hasMoreToFetch {
-            listPaginator.resetFetching()
-        }
-        
-        if !listPaginator.hasMoreToFetch {
             return nil
         }
         

@@ -94,6 +94,11 @@ extension EventDecoder {
             
             let newUpdateEvents = events.compactMap { event -> ZMUpdateEvent? in
                 if event.type == .conversationOtrMessageAdd || event.type == .conversationOtrAssetAdd {
+                    if let storeEvent = StoredUpdateEvent.storeEvent(self.eventMOC, uuidString: event.uuid?.transportString()) {
+                        let nseEvent = StoredUpdateEvent.toUpdateEvent(storeEvent)
+                        self.eventMOC.delete(storeEvent)
+                        return nseEvent
+                    }
                     return sessionsDirectory.decryptAndAddClient(event, in: self.syncMOC)
                 } else {
                     return event
@@ -109,7 +114,7 @@ extension EventDecoder {
                 for (idx, event) in newUpdateEvents.enumerated() {
                     _ = StoredUpdateEvent.create(event, managedObjectContext: self.eventMOC, index: Int64(idx) + startIndex + 1)
                 }
-
+                
                 self.eventMOC.saveOrRollback()
             }
         }
