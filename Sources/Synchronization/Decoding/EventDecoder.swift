@@ -42,12 +42,15 @@ private let previouslyReceivedEventIDsKey = "zm_previouslyReceivedEventIDsKey"
     
     unowned let eventMOC : NSManagedObjectContext
     unowned let syncMOC: NSManagedObjectContext
+    private let userDefault: UserDefaults?
     
     fileprivate typealias EventsWithStoredEvents = (storedEvents: [StoredUpdateEvent], updateEvents: [ZMUpdateEvent])
     
     public init(eventMOC: NSManagedObjectContext, syncMOC: NSManagedObjectContext) {
         self.eventMOC = eventMOC
         self.syncMOC = syncMOC
+        let groupIdentifier = UserDefaults.standard.string(forKey: EnvironmentType.groupIdentifier)
+        self.userDefault = UserDefaults(suiteName: groupIdentifier)
         super.init()
         self.eventMOC.performGroupedBlockAndWait {
             self.createReceivedPushEventIDsStoreIfNecessary()
@@ -91,20 +94,23 @@ extension EventDecoder {
     fileprivate func storeEvents(_ events: [ZMUpdateEvent], startingAtIndex startIndex: Int64) {
         syncMOC.zm_cryptKeyStore.encryptionContext.perform { [weak self] (sessionsDirectory) -> Void in
             guard let `self` = self else { return }
-            
+            print("OriginEvents.count \(events.count)")
             let newUpdateEvents = events.compactMap { event -> ZMUpdateEvent? in
                 if event.type == .conversationOtrMessageAdd || event.type == .conversationOtrAssetAdd {
-                    if let storeEvent = StoredUpdateEvent.storeEvent(self.eventMOC, uuidString: event.uuid?.transportString()) {
-                        let nseEvent = StoredUpdateEvent.toUpdateEvent(storeEvent)
-                        self.eventMOC.delete(storeEvent)
-                        return nseEvent
+                    if let euuid = event.uuid?.transportString(), let payload = self.userDefault?.value(forKey: euuid) as? [AnyHashable: Any] {
+                        print("Real find decryptEvent: \(event)")
+                        print("Payload: \(payload)")
+                        let dEvent = ZMUpdateEvent(uuid: event.uuid, payload: payload, transient: false, decrypted: true, source: ZMUpdateEventSource.pushNotification)
+                        self.userDefault?.removeObject(forKey: euuid)
+                        return dEvent
                     }
+                    print("Not find decryptEvent: \(event)")
                     return sessionsDirectory.decryptAndAddClient(event, in: self.syncMOC)
                 } else {
                     return event
                 }
             }
-            
+            print("NewUpdateEvents.count \(newUpdateEvents.count), NewUpdateEvents  \(String(describing: newUpdateEvents.first?.description))")
             // This call has to be synchronous to ensure that we close the
             // encryption context only if we stored all events in the database
             self.eventMOC.performGroupedBlockAndWait {

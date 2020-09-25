@@ -8,14 +8,15 @@
 
 import Foundation
 
+
 @objcMembers public final class EventDecrypter: NSObject {
     
     unowned let syncMOC: NSManagedObjectContext
-    let eventMoc: NSManagedObjectContext
+    let userDefault: UserDefaults
     
-    public init(syncMOC: NSManagedObjectContext, eventMoc: NSManagedObjectContext) {
+    public init(syncMOC: NSManagedObjectContext, userDefault: UserDefaults) {
         self.syncMOC = syncMOC
-        self.eventMoc = eventMoc
+        self.userDefault = userDefault
         super.init()
     }
         
@@ -32,11 +33,14 @@ import Foundation
                     return event
                 }
             }
+            decryptedEvents.forEach { [weak self] (event) in
+                guard let `self` = self else { return }
+                if let uuid = event.uuid?.transportString() {
+                    print("Save event id: \(uuid)")
+                    self.userDefault.set(event.payload, forKey: uuid)
+                }
+            }
         }
-        decryptedEvents.forEach { (event) in
-            StoredUpdateEvent.createNSENotification(event, managedObjectContext: self.eventMoc, index: Int64(StoredUpdateEvent.NotificationIndexKey))
-        }
-        self.eventMoc.saveOrRollback()
         return decryptedEvents
     }
     

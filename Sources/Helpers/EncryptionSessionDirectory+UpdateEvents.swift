@@ -61,6 +61,7 @@ extension EncryptionSessionsDirectory {
             }
             (createdNewSession, decryptedEvent) = result
         } catch let error as CBoxResult {
+            zmLog.error("decrypt failed: \(event)")
             fail(error: error)
             return nil
         } catch {

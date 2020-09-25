@@ -26,7 +26,6 @@ public final class StoredUpdateEvent: NSManagedObject {
     static let SortIndexKey = "sortIndex"
     static let UUIDStringKey = "uuidString"
     static let SourceKey = "source"
-    static let NotificationIndexKey = 10000000
     @NSManaged public var uuidString: String?
     @NSManaged public var debugInformation: String?
     @NSManaged public var isTransient: Bool
@@ -51,18 +50,6 @@ public final class StoredUpdateEvent: NSManagedObject {
         storedEvent.uuidString = event.uuid?.transportString()
         return storedEvent
     }
-    
-    @discardableResult
-    public static func createNSENotification(_ event: ZMUpdateEvent, managedObjectContext: NSManagedObjectContext, index: Int64) -> StoredUpdateEvent? {
-        guard let storedEvent = StoredUpdateEvent.insertNewObject(managedObjectContext) else { return nil }
-        storedEvent.debugInformation = event.debugInformation
-        storedEvent.isTransient = event.isTransient
-        storedEvent.payload = event.payload as NSDictionary
-        storedEvent.source = Int16(ZMUpdateEventSource.nseNotification.rawValue)
-        storedEvent.sortIndex = index
-        storedEvent.uuidString = event.uuid?.transportString()
-        return storedEvent
-    }
 
     
     @discardableResult
@@ -79,7 +66,6 @@ public final class StoredUpdateEvent: NSManagedObject {
         fetchRequest.sortDescriptors = [NSSortDescriptor(key: StoredUpdateEvent.SortIndexKey, ascending: true)]
         fetchRequest.fetchLimit = batchSize
         fetchRequest.returnsObjectsAsFaults = false
-        fetchRequest.predicate = NSPredicate(format: "%K != %d", StoredUpdateEvent.SourceKey, ZMUpdateEventSource.nseNotification.rawValue)
         let result = context.fetchOrAssert(request: fetchRequest)
         return result
     }
@@ -107,15 +93,5 @@ public final class StoredUpdateEvent: NSManagedObject {
             return decryptedEvent
         }
         return events
-    }
-    
-    public static func storeEvent(_ context: NSManagedObjectContext, uuidString: String?) -> StoredUpdateEvent? {
-        guard let uuid = uuidString else {return nil}
-        let fetchRequest = NSFetchRequest<StoredUpdateEvent>(entityName: self.entityName)
-        fetchRequest.fetchLimit = 1
-        fetchRequest.returnsObjectsAsFaults = false
-        fetchRequest.predicate = NSPredicate(format: "%K == %@ AND %K == %d", StoredUpdateEvent.UUIDStringKey, uuid, StoredUpdateEvent.SourceKey, ZMUpdateEventSource.nseNotification.rawValue)
-        let result = context.fetchOrAssert(request: fetchRequest)
-        return result.first
     }
 }
