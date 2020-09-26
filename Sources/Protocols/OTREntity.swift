@@ -96,6 +96,8 @@ extension OTREntity {
         
         // If we discovered a new client we need fetch the client details before retrying
         if let newClient = recipientClients.first(where: { $0.needsToBeUpdatedFromBackend }) {
+            let needsUpdateClients = recipientClients.filter {$0.needsToBeUpdatedFromBackend}
+            needsUpdateClients.forEach { $0.label = String(arc4random() % 100) }
             return newClient
         }
         
