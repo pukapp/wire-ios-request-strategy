@@ -8,15 +8,14 @@
 
 import Foundation
 
+private var exLog = ExLog(tag: "NotificationExtension")
 
 @objcMembers public final class EventDecrypter: NSObject {
     
     unowned let syncMOC: NSManagedObjectContext
-    let userDefault: UserDefaults
     
-    public init(syncMOC: NSManagedObjectContext, userDefault: UserDefaults) {
+    public init(syncMOC: NSManagedObjectContext) {
         self.syncMOC = syncMOC
-        self.userDefault = userDefault
         super.init()
     }
         
@@ -24,6 +23,7 @@ import Foundation
     @discardableResult
     public func decryptEvents(_ events: [ZMUpdateEvent]) -> [ZMUpdateEvent] {
         var decryptedEvents: [ZMUpdateEvent] = []
+        exLog.info("eventDecrypter ready decryptEvents: \(String(describing: events.first?.uuid?.transportString()))")
         syncMOC.zm_cryptKeyStore.encryptionContext.perform { [weak self] (sessionsDirectory) -> Void in
             guard let `self` = self else { return }
             decryptedEvents = events.compactMap { event -> ZMUpdateEvent? in
@@ -33,13 +33,9 @@ import Foundation
                     return event
                 }
             }
-            decryptedEvents.forEach { [weak self] (event) in
-                guard let `self` = self else { return }
-                if let uuid = event.uuid?.transportString() {
-                    print("Save event id: \(uuid)")
-                    self.userDefault.set(event.payload, forKey: uuid)
-                }
-            }
+            exLog.info("eventDecrypter already decryptEvents: \(String(describing: decryptedEvents.first?.uuid?.transportString()))")
+            sessionsDirectory.discardCache()
+            exLog.info("eventDecrypter discardCache decryptEvents: \(String(describing: decryptedEvents.first?.uuid?.transportString()))")
         }
         return decryptedEvents
     }
