@@ -97,14 +97,14 @@ extension EventDecoder {
             print("OriginEvents.count \(events.count)")
             let newUpdateEvents = events.compactMap { event -> ZMUpdateEvent? in
                 if event.type == .conversationOtrMessageAdd || event.type == .conversationOtrAssetAdd {
-                    if let euuid = event.uuid?.transportString(), let payload = self.userDefault?.value(forKey: euuid) as? [AnyHashable: Any] {
-                        print("Real find decryptEvent: \(event)")
-                        print("Payload: \(payload)")
-                        let dEvent = ZMUpdateEvent(uuid: event.uuid, payload: payload, transient: false, decrypted: true, source: ZMUpdateEventSource.pushNotification)
-                        self.userDefault?.removeObject(forKey: euuid)
-                        return dEvent
-                    }
-                    print("Not find decryptEvent: \(event)")
+//                    if let euuid = event.uuid?.transportString(), let payload = self.userDefault?.value(forKey: euuid) as? [AnyHashable: Any] {
+//                        print("Real find decryptEvent: \(event)")
+//                        print("Payload: \(payload)")
+//                        let dEvent = ZMUpdateEvent(uuid: event.uuid, payload: payload, transient: false, decrypted: true, source: ZMUpdateEventSource.pushNotification)
+//                        self.userDefault?.removeObject(forKey: euuid)
+//                        return dEvent
+//                    }
+//                    print("Not find decryptEvent: \(event)")
                     return sessionsDirectory.decryptAndAddClient(event, in: self.syncMOC)
                 } else {
                     return event
