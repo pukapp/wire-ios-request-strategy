@@ -51,11 +51,11 @@ extension ZMOTRMessage: OTREntity {
 }
 
 /// Message that can block following messages
-@objc private protocol BlockingMessage {
-    
-    /// If true, no other messages should be sent until this message is sent
-    var shouldBlockFurtherMessages : Bool { get }
-}
+//@objc private protocol BlockingMessage {
+//
+//    /// If true, no other messages should be sent until this message is sent
+//    var shouldBlockFurtherMessages : Bool { get }
+//}
 
 extension ZMMessage {
     
@@ -65,12 +65,14 @@ extension ZMMessage {
         // conversation not created yet on the BE?
         guard let conversation = self.conversation else { return nil }
         
+        guard conversation.conversationType != .hugeGroup else {return nil}
+        
         if conversation.remoteIdentifier == nil {
             zmLog.debug("conversation has no remote identifier")
             return conversation
-
         }
         
+        return nil
         // Messages should time out within 1 minute. But image messages never time out. In case there is a bug
         // and one image message gets stuck in a non-sent state (but not expired), that message will block any future
         // message in that conversation forver. This happened with some buggy builds (ie.g. internal 2838).
@@ -82,47 +84,47 @@ extension ZMMessage {
         // is set using the local timestamp so we can safely check with the current messge timestamp (not delivered,
         // so also a local timestamp). Of course the user could change the local clock in between sending messages
         // but this is quite an edge case.
-        let MaxDelayToConsiderForBlockingObject = Double(3 * 60); // 3 minutes
+//        let MaxDelayToConsiderForBlockingObject = Double(3 * 60); // 3 minutes
 
-        var blockingMessage : ZMMessage?
+//        var blockingMessage : ZMMessage?
         
         // we don't want following messages to block this one, only previous ones.
         // so we iterate backwards and we ignore everything until we find this one
-        var selfMessageFound = false
-
-        for previousMessage in conversation.lastMessages() {
-            if let currentTimestamp = self.serverTimestamp,
-                let previousTimestamp = previousMessage.serverTimestamp {
-                
-                // to old?
-                let tooOld = currentTimestamp.timeIntervalSince(previousTimestamp) > MaxDelayToConsiderForBlockingObject
-                if tooOld {
-                    break
-                }
-            }
-            
-            let sameMessage = previousMessage === self || previousMessage.nonce == self.nonce
-            if sameMessage {
-                selfMessageFound = true
-            }
-            
-            if selfMessageFound && !sameMessage && previousMessage.shouldBlockFurtherMessages {
-                blockingMessage = previousMessage
-                break
-            }
-        }
-        return blockingMessage
+//        var selfMessageFound = false
+//
+//        for previousMessage in conversation.lastMessages() {
+//            if let currentTimestamp = self.serverTimestamp,
+//                let previousTimestamp = previousMessage.serverTimestamp {
+//
+//                // to old?
+//                let tooOld = currentTimestamp.timeIntervalSince(previousTimestamp) > MaxDelayToConsiderForBlockingObject
+//                if tooOld {
+//                    break
+//                }
+//            }
+//
+//            let sameMessage = previousMessage === self || previousMessage.nonce == self.nonce
+//            if sameMessage {
+//                selfMessageFound = true
+//            }
+//
+//            if selfMessageFound && !sameMessage && previousMessage.shouldBlockFurtherMessages {
+//                blockingMessage = previousMessage
+//                break
+//            }
+//        }
+//        return blockingMessage
     }
     
 }
 
-extension ZMMessage : BlockingMessage {
-    
-    var shouldBlockFurtherMessages : Bool {
-        ///当前一条消息为视频消息的时候，不堵塞住后面的其他消息
-        if let videoMessage = self as? ZMAssetClientMessage, videoMessage.isVideo {
-            return false
-        }
-        return self.deliveryState == .pending && !self.isExpired
-    }
-}
+//extension ZMMessage : BlockingMessage {
+//
+//    var shouldBlockFurtherMessages : Bool {
+//        ///当前一条消息为视频消息的时候，不堵塞住后面的其他消息
+//        if let videoMessage = self as? ZMAssetClientMessage, videoMessage.isVideo {
+//            return false
+//        }
+//        return self.deliveryState == .pending && !self.isExpired
+//    }
+//}
