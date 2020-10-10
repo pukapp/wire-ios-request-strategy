@@ -77,7 +77,11 @@ extension LinkPreviewUploadRequestStrategy : ZMUpstreamTranscoder {
     }
     
     public func dependentObjectNeedingUpdate(beforeProcessingObject dependant: ZMManagedObject) -> Any? {
-        guard let message = dependant as? ZMClientMessage, !dependant.isZombieObject else {
+        guard
+            let message = dependant as? ZMClientMessage,
+            !dependant.isZombieObject,
+            message.conversation?.conversationType != ZMConversationType.hugeGroup
+            else {
             return nil
         }
         return message.dependentObjectNeedingUpdateBeforeProcessing

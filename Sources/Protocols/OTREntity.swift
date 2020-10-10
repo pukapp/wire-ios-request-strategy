@@ -67,7 +67,13 @@ extension OTREntity {
         // If we receive a missing payload that includes users that are not part of the conversation,
         // we need to refetch the conversation before recreating the message payload.
         // Otherwise we end up in an endless loop receiving missing clients error
-        if conversation.needsToBeUpdatedFromBackend || conversation.needsToVerifyLegalHold {
+        
+        if conversation.conversationType == .hugeGroup {
+            return nil
+        }
+        
+        if conversation.needsToBeUpdatedFromBackend
+        {
             zmLog.debug("conversation needs to be update from backend")
             return conversation
         }
@@ -76,13 +82,6 @@ extension OTREntity {
             && conversation.connection?.needsToBeUpdatedFromBackend == true {
             zmLog.debug("connection needs to be update from backend")
             return conversation.connection
-        }
-        
-        // If the conversation is degraded we shouldn't send the message until the conversation
-        // is marked as not secure or it's verified again
-        if conversation.securityLevel == .secureWithIgnored {
-            zmLog.debug("conversations has security level ignored")
-            return conversation
         }
     
         return dependentObjectNeedingUpdateBeforeProcessingOTREntity(recipients: conversation.activeParticipants)
