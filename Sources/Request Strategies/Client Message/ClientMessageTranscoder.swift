@@ -33,6 +33,7 @@ public class ClientMessageTranscoder: AbstractRequestStrategy {
     fileprivate weak var localNotificationDispatcher: PushMessageHandler?
     
     public init(in moc:NSManagedObjectContext,
+                msgMoc:NSManagedObjectContext,
          localNotificationDispatcher: PushMessageHandler?,
          applicationStatus: ApplicationStatus?)
     {
@@ -43,8 +44,11 @@ public class ClientMessageTranscoder: AbstractRequestStrategy {
         
         super.init(withManagedObjectContext: moc, applicationStatus: applicationStatus)
         
-        self.configuration = [.allowsRequestsDuringEventProcessing, .allowsRequestsWhileInBackground]
-        self.upstreamObjectSync = ZMUpstreamInsertedObjectSync(transcoder: self, entityName: ZMClientMessage.entityName(), filter: ClientMessageTranscoder.insertFilter, managedObjectContext: moc)
+        self.configuration =
+            [.allowsRequestsDuringSync,
+             .allowsRequestsDuringEventProcessing,.allowsRequestsWhileInBackground,
+                    .allowsRequestsDuringNotificationStreamFetch]
+        self.upstreamObjectSync = ZMUpstreamInsertedObjectSync(transcoder: self, entityName: ZMClientMessage.entityName(), filter: ClientMessageTranscoder.insertFilter, managedObjectContext: msgMoc)
         self.deleteOldEphemeralMessages()
     }
     
