@@ -62,6 +62,9 @@ public class ClientMessageTranscoder: AbstractRequestStrategy {
     
     static var insertFilter: NSPredicate {
         return NSPredicate { object, _ in
+            if object is ZMSystemMessage {
+                return false
+            }
             if  let message = object as? ZMMessage,
                 let sender = message.sender,
                 sender.isSelfUser,
@@ -287,9 +290,12 @@ extension ClientMessageTranscoder {
     }
     
     public func shouldCreateRequest(toSyncObject managedObject: ZMManagedObject, forKeys keys: Set<String>, withSync sync: Any) -> Bool {
-        guard let message = managedObject as? ZMClientMessage,
+        guard
+            let message = managedObject as? ZMClientMessage,
             !managedObject.isZombieObject,
-            let genericMessage = message.genericMessage else { return false }
+            let genericMessage = message.genericMessage else {
+            return false
+        }
         if genericMessage.hasConfirmation() == true {
             let messageNonce = UUID(uuidString: genericMessage.confirmation.firstMessageId)
             let sentMessage = ZMMessage.fetch(withNonce: messageNonce, for: message.conversation!, in: message.managedObjectContext!)
