@@ -75,12 +75,14 @@ extension OTREntity {
         if conversation.needsToBeUpdatedFromBackend
         {
             zmLog.debug("conversation needs to be update from backend")
-//            return conversation
+            conversation.triggerCode = Int16(arc4random() % 100)
+            return conversation
         }
         
         if (conversation.conversationType == .oneOnOne || conversation.conversationType == .connection)
             && conversation.connection?.needsToBeUpdatedFromBackend == true {
             zmLog.debug("connection needs to be update from backend")
+            conversation.connection?.triggerCode = Int16(arc4random() % 100)
             return conversation.connection
         }
     
@@ -94,10 +96,10 @@ extension OTREntity {
         }
         
         // If we discovered a new client we need fetch the client details before retrying
-        if let _ = recipientClients.first(where: { $0.needsToBeUpdatedFromBackend }) {
+        if let newClient = recipientClients.first(where: { $0.needsToBeUpdatedFromBackend }) {
             let needsUpdateClients = recipientClients.filter {$0.needsToBeUpdatedFromBackend}
-            needsUpdateClients.forEach { $0.label = String(arc4random() % 100) }
-//            return newClient
+            needsUpdateClients.forEach { $0.triggerCode = Int16(arc4random() % 100) }
+            return newClient
         }
         
         // If we are missing clients, we need to refetch the clients before retrying
@@ -112,7 +114,9 @@ extension OTREntity {
                     selfClient.setLocallyModifiedKeys(Set(arrayLiteral: ZMUserClientMissingKey))
                     context.enqueueDelayedSave()
                 }
-                return nil
+                
+                selfClient.triggerCode = Int16(arc4random() % 100)
+                return selfClient
             }
         }
         
