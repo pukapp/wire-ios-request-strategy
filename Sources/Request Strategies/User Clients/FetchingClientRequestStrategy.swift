@@ -51,10 +51,10 @@ public final class FetchingClientRequestStrategy : AbstractRequestStrategy {
     public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         
         self.userClientByUserIDTranscoder = UserClientByUserIDTranscoder(managedObjectContext: managedObjectContext)
-        self.userClientByUserClientIDTranscoder = UserClientByUserClientIDTranscoder(managedObjectContext: managedObjectContext)
+        self.userClientByUserClientIDTranscoder = UserClientByUserClientIDTranscoder(managedObjectContext: managedObjectContext.zm_msg)
         
         self.userClientsByUserID = IdentifierObjectSync(managedObjectContext: managedObjectContext, transcoder: userClientByUserIDTranscoder)
-        self.userClientsByUserClientID = IdentifierObjectSync(managedObjectContext: managedObjectContext, transcoder: userClientByUserClientIDTranscoder)
+        self.userClientsByUserClientID = IdentifierObjectSync(managedObjectContext: managedObjectContext.zm_msg, transcoder: userClientByUserClientIDTranscoder)
         
         super.init(withManagedObjectContext: managedObjectContext, applicationStatus: applicationStatus)
         

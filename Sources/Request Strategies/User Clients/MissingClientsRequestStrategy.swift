@@ -210,6 +210,8 @@ public final class MissingClientsRequestStrategy: AbstractRequestStrategy, ZMUps
         requestUserInfo: [AnyHashable: Any]!,
         responsePayload payload: ZMTransportData!) -> Bool {
         
+        guard let managedObjectContext = managedObject.managedObjectContext else {return false}
+        
         guard let dictionary = payload.asDictionary() as? [String : [String : AnyObject]],
             let selfClient = ZMUser.selfUser(in: managedObjectContext).selfClient()
             else {

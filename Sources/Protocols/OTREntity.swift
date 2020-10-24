@@ -97,8 +97,6 @@ extension OTREntity {
         
         // If we discovered a new client we need fetch the client details before retrying
         if let newClient = recipientClients.first(where: { $0.needsToBeUpdatedFromBackend }) {
-            let needsUpdateClients = recipientClients.filter {$0.needsToBeUpdatedFromBackend}
-            needsUpdateClients.forEach { $0.triggerCode = Int16(arc4random() % 100) }
             return newClient
         }
         
@@ -115,7 +113,6 @@ extension OTREntity {
                     context.enqueueDelayedSave()
                 }
                 
-                selfClient.triggerCode = Int16(arc4random() % 100)
                 return selfClient
             }
         }
@@ -165,7 +162,7 @@ extension OTREntity {
             // Process missing clients
             let userMissingClients: [UserClient] = missingClients.map {
                 let client = UserClient.fetchUserClient(withRemoteId: $0, forUser: user, createIfNeeded: true)!
-                client.discoveredByMessage = self as? ZMOTRMessage
+//                client.discoveredByMessage = self as? ZMOTRMessage
                 return client
             }
 
@@ -277,7 +274,6 @@ extension OTREntity {
             guard let clientIDs = pair.1 as? [String] else { fatal("Missing client ID is not parsed properly") }
             let clients: [UserClient] = clientIDs.map {
                 let client = UserClient.fetchUserClient(withRemoteId: $0, forUser: user, createIfNeeded: true)!
-                client.discoveredByMessage = self as? ZMOTRMessage
                 return client
             }
             

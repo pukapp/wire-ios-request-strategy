@@ -148,7 +148,7 @@
         
         ZMSyncToken *token = [self.objectsToDownload didStartSynchronizingKeys:nil forObject:nextObject];
         ZM_WEAK(self);
-        [request addCompletionHandler:[ZMCompletionHandler handlerOnGroupQueue:self.context block:^(ZMTransportResponse *response) {
+        [request addCompletionHandler:[ZMCompletionHandler handlerOnGroupQueue:nextObject.managedObjectContext block:^(ZMTransportResponse *response) {
             ZM_STRONG(self);
             [self processResponse:response forObject:nextObject token:token transcoder:self.transcoder];
         }]];
