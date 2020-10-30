@@ -44,7 +44,7 @@ import WireUtilities
 
     override func processLinks(in message: ZMClientMessage, text: String, excluding excludedRanges: [NSRange]) {
         linkPreviewDetector.downloadLinkPreviews(inText: text, excluding: excludedRanges) { [weak self] linkPreviews in
-            self?.managedObjectContext.performGroupedBlock {
+            message.managedObjectContext?.performGroupedBlock {
                 self?.zmLog.debug("\(linkPreviews.count) previews for: \(message.nonce?.uuidString ?? "nil")\n\(linkPreviews)")
                 self?.didProcessMessage(message, result: linkPreviews)
             }
@@ -52,6 +52,9 @@ import WireUtilities
     }
 
     override func didProcessMessage(_ message: ZMClientMessage, result linkPreviews: [LinkMetadata]) {
+        
+        guard let managedObjectContext = message.managedObjectContext else {return}
+        
         finishProcessing(message)
 
         if let preview = linkPreviews.first, let messageText = message.textMessageData?.messageText, let mentions = message.textMessageData?.mentions, !message.isObfuscated {

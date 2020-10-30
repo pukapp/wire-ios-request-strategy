@@ -209,7 +209,7 @@
 }
 
 - (void)completedDownsampleOperation:(ZMImageDownsampleOperation * __nonnull)operation imageOwner:(id<ZMImageOwner> __nonnull)imageOwner
-{    
+{
     [self.managedObjectContext performGroupedBlock:^{
         if ([imageOwner respondsToSelector:@selector(setImageData:for:properties:)])  {
             [(id)imageOwner setImageData:operation.downsampleImageData for:operation.format properties:operation.properties];

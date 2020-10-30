@@ -87,7 +87,6 @@ public class NotificationStreamSync: NSObject, ZMRequestGenerator, ZMSimpleListR
     
     @objc(nextUUIDFromResponse:forListPaginator:)
     public func nextUUID(from response: ZMTransportResponse!, forListPaginator paginator: ZMSimpleListRequestPaginator!) -> UUID! {
-        print(response)
         if let timestamp = response.payload?.asDictionary()?["time"] {
             updateServerTimeDeltaWith(timestamp: timestamp as! String)
         }

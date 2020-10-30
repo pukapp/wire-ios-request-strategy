@@ -31,7 +31,10 @@ public final class AssetV3UploadRequestStrategy: AbstractRequestStrategy, ZMCont
         preprocessor = AssetsPreprocessor(managedObjectContext: managedObjectContext)
         
         super.init(withManagedObjectContext: managedObjectContext, applicationStatus: applicationStatus)
-        configuration = .allowsRequestsDuringEventProcessing
+        configuration = [.allowsRequestsDuringEventProcessing,
+                         .allowsRequestsDuringSync,
+                         .allowsRequestsWhileInBackground,
+                         .allowsRequestsDuringNotificationStreamFetch]
         
         upstreamSync = ZMUpstreamModifiedObjectSync(
             transcoder: self,

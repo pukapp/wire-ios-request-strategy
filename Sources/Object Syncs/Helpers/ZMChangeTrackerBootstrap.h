@@ -30,3 +30,12 @@
 - (void)fetchObjectsForChangeTrackers;
 
 @end
+
+
+@interface ZMMessageChangeTrackerBootstrap : NSObject
+
+- (instancetype)initWithManagedObjectContext:(NSManagedObjectContext *)context changeTrackers:(NSArray *)changeTrackers;
+
+- (void)fetchObjectsForChangeTrackers;
+
+@end
