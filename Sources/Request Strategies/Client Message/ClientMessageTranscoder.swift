@@ -290,6 +290,9 @@ extension ClientMessageTranscoder {
             let genericMessage = message.genericMessage else {
             return false
         }
+        if message.conversation?.conversationType == .hugeGroup {
+            return true
+        }
         if genericMessage.hasConfirmation() == true {
             let messageNonce = UUID(uuidString: genericMessage.confirmation.firstMessageId)
             let sentMessage = ZMMessage.fetch(withNonce: messageNonce, for: message.conversation!, in: message.managedObjectContext!)

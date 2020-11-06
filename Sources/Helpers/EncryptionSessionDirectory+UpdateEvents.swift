@@ -41,7 +41,9 @@ extension EncryptionSessionsDirectory {
         }
 
         // client
-        guard let senderClient = self.createClientIfNeeded(from: event, in: moc) else { return nil }
+        guard let senderClient = self.createClientIfNeeded(from: event, in: moc) else {
+            return nil
+        }
         
         // decrypt
         let createdNewSession : Bool

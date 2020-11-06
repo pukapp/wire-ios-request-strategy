@@ -10,7 +10,6 @@ import Foundation
 
 public protocol NotificationSingleSyncDelegate: class {
     func fetchedEvent(_ event: ZMUpdateEvent)
-    func failedFetchingEvents()
 }
 
 public class NotificationSingleSync: NSObject, ZMRequestGenerator {

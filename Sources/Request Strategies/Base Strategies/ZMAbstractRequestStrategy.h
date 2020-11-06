@@ -31,7 +31,7 @@
 @property (nonatomic, readonly) ZMStrategyConfigurationOption configuration;
 @property (nonatomic, readonly, nonnull) id<ZMApplicationStatus> applicationStatus;
 
-- (instancetype _Nonnull)initWithManagedObjectContext:(nonnull NSManagedObjectContext *)managedObjectContext applicationStatus:(nonnull id<ZMApplicationStatus>)applicationStatus;
+- (instancetype _Nonnull)initWithManagedObjectContext:(nonnull NSManagedObjectContext *)managedObjectContext applicationStatus:(_Nullable id<ZMApplicationStatus>)applicationStatus;
 
 - (ZMTransportRequest * _Nullable)nextRequestIfAllowed;
 

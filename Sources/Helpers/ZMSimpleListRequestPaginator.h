@@ -32,6 +32,8 @@
 /// Status of the underlying singleRequestTranscoder
 @property (nonatomic, readonly) ZMSingleRequestProgress status;
 
+@property (nonatomic, readonly) BOOL inProgress;
+
 /// Date of last call to `resetFetching`
 @property (nonatomic, readonly) NSDate *lastResetFetchDate;
 

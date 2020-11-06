@@ -33,6 +33,10 @@
 
 @implementation ZMSingleRequestSync
 
+-(void)dealloc {
+    NSLog(@"ZMSingleRequestSync deinit");
+}
+
 - (instancetype)initWithSingleRequestTranscoder:(id<ZMSingleRequestTranscoder>)transcoder groupQueue:(id<ZMSGroupQueue>)groupQueue
 {
     self = [super init];

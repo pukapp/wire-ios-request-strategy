@@ -39,6 +39,7 @@
 
 @property (nonatomic, weak) id<ZMSimpleListRequestPaginatorSync> transcoder;
 
+@property (nonatomic) BOOL inProgress;
 @end
 
 
@@ -87,6 +88,7 @@ ZM_EMPTY_ASSERTING_INIT()
     if(!self.hasMoreToFetch) {
         return nil;
     }
+    self.inProgress = YES;
     NSMutableArray *queryItems = [NSMutableArray array];
     [queryItems addObject:[NSURLQueryItem queryItemWithName:@"size" value:[@(self.pageSize) stringValue]]];
     
@@ -121,6 +123,7 @@ ZM_EMPTY_ASSERTING_INIT()
             }
         }
         self.hasMoreToFetch = NO;
+        self.inProgress = NO;
     }
     [self.singleRequestSync readyForNextRequest];
 }
@@ -129,14 +132,19 @@ ZM_EMPTY_ASSERTING_INIT()
 {
     if (response == nil) {
         self.hasMoreToFetch = NO;
+        self.inProgress = NO;
         return;
     }
     id strongTranscoder = self.transcoder;
     if ([strongTranscoder respondsToSelector:@selector(nextUUIDFromResponse:forListPaginator:)]) {
         self.hasMoreToFetch = [[[response.payload asDictionary] optionalNumberForKey:@"has_more"] boolValue];
         self.lastUUIDOfPreviousPage = [strongTranscoder nextUUIDFromResponse:response forListPaginator:self];
+        if (!self.hasMoreToFetch) {
+            self.inProgress = NO;
+        }
     }
     else {
+        self.inProgress = NO;
         self.hasMoreToFetch = NO;
     }
 }
