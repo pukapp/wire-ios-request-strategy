@@ -66,7 +66,7 @@ public class NotificationStreamSync: NSObject, ZMRequestGenerator, ZMSingleReque
         let clientIdentifier = ZMUser.selfUser(in: self.managedObjectContext).selfClient()?.remoteIdentifier
         guard let cid = clientIdentifier else {return nil}
         var queryItems = [URLQueryItem]()
-        let sizeItem = URLQueryItem(name: "size", value: "500")
+        let sizeItem = URLQueryItem(name: "size", value: "50")
         var startKeyItem: URLQueryItem?
         if let lastid = self.managedObjectContext.zm_lastNotificationID?.transportString() {
             startKeyItem = URLQueryItem(name: "since", value:lastid)
