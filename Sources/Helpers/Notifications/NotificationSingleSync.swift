@@ -22,11 +22,14 @@ public class NotificationSingleSync: NSObject, ZMRequestGenerator {
     
     private var eventId: String?
     
-    public init(moc: NSManagedObjectContext, delegate: NotificationSingleSyncDelegate, eventId: String) {
+    private var hugeConvId: String?
+    
+    public init(moc: NSManagedObjectContext, delegate: NotificationSingleSyncDelegate, eventId: String, hugeConvId: String? = nil) {
         super.init()
         self.managedObjectContext = moc
         self.delegate = delegate
         self.eventId = eventId
+        self.hugeConvId = hugeConvId
         notificationSingleSync = ZMSingleRequestSync(singleRequestTranscoder: self, groupQueue: moc)
         notificationSingleSync.readyForNextRequest()
     }
@@ -46,7 +49,12 @@ extension NotificationSingleSync: ZMSingleRequestTranscoder {
     
     public func request(for sync: ZMSingleRequestSync) -> ZMTransportRequest? {
         guard let eventId = self.eventId else {return nil}
-        let params = "/notifications/" + "\(eventId)"
+        var params = "/notifications"
+        if let hugeConvid = self.hugeConvId {
+            params += "/bgp/\(hugeConvid)/\(eventId)"
+        } else {
+            params += "/user/\(eventId)"
+        }
         let components = URLComponents(string: params)
         guard let path = components?.string else { return nil }
         return ZMTransportRequest(getFromPath: path)
