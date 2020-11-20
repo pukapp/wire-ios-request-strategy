@@ -27,7 +27,12 @@ public final class LinkPreviewUploadRequestStrategy: AbstractRequestStrategy, ZM
 
     public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         super.init(withManagedObjectContext: managedObjectContext, applicationStatus: applicationStatus)
-        configuration = .allowsRequestsDuringEventProcessing
+        self.configuration =  [
+            .allowsRequestsDuringSync,
+            .allowsRequestsDuringEventProcessing,
+            .allowsRequestsWhileInBackground,
+            .allowsRequestsDuringNotificationStreamFetch
+        ]
 
         upstreamSync = ZMUpstreamModifiedObjectSync(
             transcoder: self,
