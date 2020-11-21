@@ -8,6 +8,8 @@
 
 import Foundation
 
+private var exLog = ExLog(tag: "NotificationSingleSync")
+
 public protocol NotificationSingleSyncDelegate: class {
     func fetchedEvent(_ event: ZMUpdateEvent)
 }
@@ -31,6 +33,7 @@ public class NotificationSingleSync: NSObject, ZMRequestGenerator {
         self.eventId = eventId
         self.hugeConvId = hugeConvId
         notificationSingleSync = ZMSingleRequestSync(singleRequestTranscoder: self, groupQueue: moc)
+        exLog.info("NotificationSingleSync init eventId: \(eventId)")
         notificationSingleSync.readyForNextRequest()
     }
     
@@ -48,6 +51,7 @@ public class NotificationSingleSync: NSObject, ZMRequestGenerator {
 extension NotificationSingleSync: ZMSingleRequestTranscoder {
     
     public func request(for sync: ZMSingleRequestSync) -> ZMTransportRequest? {
+        exLog.info("request for sync eventId \(String(describing: self.eventId))")
         guard let eventId = self.eventId else {return nil}
         var params = "/notifications"
         if let hugeConvid = self.hugeConvId {
@@ -57,10 +61,12 @@ extension NotificationSingleSync: ZMSingleRequestTranscoder {
         }
         let components = URLComponents(string: params)
         guard let path = components?.string else { return nil }
+        exLog.info("generate single request path \(path)")
         return ZMTransportRequest(getFromPath: path)
     }
     
     public func didReceive(_ response: ZMTransportResponse, forSingleRequest sync: ZMSingleRequestSync) {
+        exLog.info("didReceive single request payload \(String(describing: response.payload))")
         guard let payload = response.payload else {
             return
         }
