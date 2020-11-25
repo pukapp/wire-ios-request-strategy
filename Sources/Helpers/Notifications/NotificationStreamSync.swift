@@ -43,14 +43,16 @@ public class NotificationStreamSync: NSObject, ZMRequestGenerator, ZMSingleReque
     public var fetchNotificationSync: ZMSingleRequestSync!
     private unowned var managedObjectContext: NSManagedObjectContext!
     private weak var notificationStreamSyncDelegate: NotificationStreamSyncDelegate?
+    private var accountIdentifier: UUID
     
     deinit {
         print("NotificationStreamSync deinit")
     }
 
     public init(moc: NSManagedObjectContext,
-                notificationsTracker: NotificationsTracker? = nil,
-                delegate: NotificationStreamSyncDelegate) {
+                delegate: NotificationStreamSyncDelegate,
+                accountid: UUID) {
+        accountIdentifier = accountid
         super.init()
         managedObjectContext = moc
         fetchNotificationSync = ZMSingleRequestSync(singleRequestTranscoder: self, groupQueue: moc)
@@ -68,8 +70,10 @@ public class NotificationStreamSync: NSObject, ZMRequestGenerator, ZMSingleReque
         var queryItems = [URLQueryItem]()
         let sizeItem = URLQueryItem(name: "size", value: "50")
         var startKeyItem: URLQueryItem?
-        if let lastid = self.managedObjectContext.zm_lastNotificationID?.transportString() {
-            startKeyItem = URLQueryItem(name: "since", value:lastid)
+        if let lastEventId = AppGroupInfo.sharedUserDefaults.value(forKey: lastUpdateEventIDKey + self.accountIdentifier.transportString()) as? String {
+            startKeyItem = URLQueryItem(name: "since", value: lastEventId)
+        } else {
+            return nil
         }
         let cidItem = URLQueryItem(name: "client", value: cid)
         if let startItem = startKeyItem {
