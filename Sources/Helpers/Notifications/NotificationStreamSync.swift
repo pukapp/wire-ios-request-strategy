@@ -38,6 +38,8 @@ public protocol NotificationStreamSyncDelegate: class {
     func failedFetchingEvents()
 }
 
+private var exLog = ExLog(tag: "NotificationStreamSync")
+
 public class NotificationStreamSync: NSObject, ZMRequestGenerator, ZMSingleRequestTranscoder {
     
     public var fetchNotificationSync: ZMSingleRequestSync!
@@ -72,6 +74,7 @@ public class NotificationStreamSync: NSObject, ZMRequestGenerator, ZMSingleReque
         var startKeyItem: URLQueryItem?
         if let lastEventId = AppGroupInfo.sharedUserDefaults.value(forKey: lastUpdateEventIDKey + self.accountIdentifier.transportString()) as? String {
             startKeyItem = URLQueryItem(name: "since", value: lastEventId)
+            exLog.info("request for sync eventId:\(lastEventId)")
         } else {
             return nil
         }
@@ -85,6 +88,7 @@ public class NotificationStreamSync: NSObject, ZMRequestGenerator, ZMSingleReque
         components?.queryItems = queryItems
         guard let compString = components?.string else {return nil}
         let request = ZMTransportRequest(getFromPath: compString)
+        exLog.info("generate new stream request \(request)")
         return request
     }
     
