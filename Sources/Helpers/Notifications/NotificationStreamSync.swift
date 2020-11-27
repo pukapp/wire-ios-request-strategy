@@ -70,12 +70,13 @@ public class NotificationStreamSync: NSObject, ZMRequestGenerator, ZMSingleReque
         let clientIdentifier = ZMUser.selfUser(in: self.managedObjectContext).selfClient()?.remoteIdentifier
         guard let cid = clientIdentifier else {return nil}
         var queryItems = [URLQueryItem]()
-        let sizeItem = URLQueryItem(name: "size", value: "50")
+        let sizeItem = URLQueryItem(name: "size", value: "20")
         var startKeyItem: URLQueryItem?
-        if let lastEventId = AppGroupInfo.sharedUserDefaults.value(forKey: lastUpdateEventIDKey + self.accountIdentifier.transportString()) as? String {
+        if let lastEventId = AppGroupInfo.instance.sharedUserDefaults.value(forKey: lastUpdateEventIDKey + self.accountIdentifier.transportString()) as? String {
             startKeyItem = URLQueryItem(name: "since", value: lastEventId)
             exLog.info("request for sync eventId:\(lastEventId)")
         } else {
+            exLog.info("can't create request for sync that no lastEventId")
             return nil
         }
         let cidItem = URLQueryItem(name: "client", value: cid)
