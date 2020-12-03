@@ -80,7 +80,8 @@ import Foundation
         
         for asset in message.assets {
             
-            if asset.needsPreprocessing, let imageOperations = imageAssetPreprocessor?.operations(forPreprocessingImageOwner: AssetImageOwnerAdapter(asset: asset)) {
+            if asset.needsPreprocessing,
+                let imageOperations = imageAssetPreprocessor?.operations(forPreprocessingImageOwner: AssetImageOwnerAdapter(asset: asset)) {
                 processingGroup.enter()
                 imageProcessingQueue.addOperations(imageOperations, waitUntilFinished: false)
             } else {

@@ -28,13 +28,15 @@ private var exLog = ExLog(tag: "NotificationExtension")
             guard let `self` = self else { return }
             decryptedEvents = events.compactMap { event -> ZMUpdateEvent? in
                 if event.type == .conversationOtrMessageAdd || event.type == .conversationOtrAssetAdd {
-                    return sessionsDirectory.decryptAndAddClient(event, in: self.syncMOC)
+                     let e = sessionsDirectory.decryptAndAddClient(event, in: self.syncMOC)
+                    sessionsDirectory.discardCache()
+                    return e
                 } else {
                     return event
                 }
             }
             exLog.info("eventDecrypter already decryptEvents: \(String(describing: decryptedEvents.first?.uuid?.transportString()))")
-            sessionsDirectory.discardCache()
+            
             exLog.info("eventDecrypter discardCache decryptEvents: \(String(describing: decryptedEvents.first?.uuid?.transportString()))")
         }
         return decryptedEvents

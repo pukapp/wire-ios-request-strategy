@@ -43,7 +43,10 @@ public class ClientMessageTranscoder: AbstractRequestStrategy {
         
         super.init(withManagedObjectContext: moc, applicationStatus: applicationStatus)
         
-        self.configuration = [.allowsRequestsDuringEventProcessing, .allowsRequestsWhileInBackground]
+        self.configuration =
+            [.allowsRequestsDuringSync,
+             .allowsRequestsDuringEventProcessing,.allowsRequestsWhileInBackground,
+                    .allowsRequestsDuringNotificationStreamFetch]
         self.upstreamObjectSync = ZMUpstreamInsertedObjectSync(transcoder: self, entityName: ZMClientMessage.entityName(), filter: ClientMessageTranscoder.insertFilter, managedObjectContext: moc)
         self.deleteOldEphemeralMessages()
     }
@@ -58,6 +61,9 @@ public class ClientMessageTranscoder: AbstractRequestStrategy {
     
     static var insertFilter: NSPredicate {
         return NSPredicate { object, _ in
+            if object is ZMSystemMessage {
+                return false
+            }
             if  let message = object as? ZMMessage,
                 let sender = message.sender,
                 sender.isSelfUser,
@@ -132,11 +138,6 @@ extension ClientMessageTranscoder: ZMUpstreamTranscoder {
         }
         
         request.add(completionHandler)
-        
-        if message.genericMessage?.hasConfirmation() == true && self.applicationStatus!.deliveryConfirmation.needsToSyncMessages {
-            request.forceToVoipSession()
-        }
-
 
         self.messageExpirationTimer.stop(for: message)
         if let expiration = message.expirationDate {
@@ -283,9 +284,15 @@ extension ClientMessageTranscoder {
     }
     
     public func shouldCreateRequest(toSyncObject managedObject: ZMManagedObject, forKeys keys: Set<String>, withSync sync: Any) -> Bool {
-        guard let message = managedObject as? ZMClientMessage,
+        guard
+            let message = managedObject as? ZMClientMessage,
             !managedObject.isZombieObject,
-            let genericMessage = message.genericMessage else { return false }
+            let genericMessage = message.genericMessage else {
+            return false
+        }
+        if message.conversation?.conversationType == .hugeGroup {
+            return true
+        }
         if genericMessage.hasConfirmation() == true {
             let messageNonce = UUID(uuidString: genericMessage.confirmation.firstMessageId)
             let sentMessage = ZMMessage.fetch(withNonce: messageNonce, for: message.conversation!, in: message.managedObjectContext!)

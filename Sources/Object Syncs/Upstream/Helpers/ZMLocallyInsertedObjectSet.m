@@ -68,7 +68,7 @@
 
 - (void)didStartSynchronizingObject:(ZMManagedObject *)object
 {
-    RequireString([self.insertedObjects containsObject:object], "Synced object was never added: %s", NSStringFromClass([object class]).UTF8String);
+//    RequireString([self.insertedObjects containsObject:object], "Synced object was never added: %s", NSStringFromClass([object class]).UTF8String);
     [self.currentlySynchronizedObjects addObject:object];
 }
 

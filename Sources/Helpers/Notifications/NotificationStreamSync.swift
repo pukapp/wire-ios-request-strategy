@@ -26,146 +26,94 @@ public protocol PreviouslyReceivedEventIDsCollection: NSObjectProtocol {
 
 @objc
 public protocol UpdateEventProcessor: class {
-    @objc(decryptUpdateEvents:ignoreBuffer:)
-    func decryptUpdateEvents(_ updateEvents: [ZMUpdateEvent], ignoreBuffer: Bool)
+    @objc(decryptUpdateEventsAndGenerateNotification:)
+    func decryptUpdateEventsAndGenerateNotification(_ updateEvents: [ZMUpdateEvent])
     
-    @objc(processUpdateEvents:ignoreBuffer:)
-    func processUpdateEvents(_ updateEvents: [ZMUpdateEvent], ignoreBuffer: Bool)
+    @objc(processUpdateEvents:)
+    func processUpdateEvents(_ updateEvents: [ZMUpdateEvent])
 }
 
 public protocol NotificationStreamSyncDelegate: class {
-    func fetchedEvents(_ events: [ZMUpdateEvent], hasMoreToFetch: Bool)
+    func fetchedEvents(_ events: [ZMUpdateEvent])
     func failedFetchingEvents()
 }
 
-public class NotificationStreamSync: NSObject, ZMRequestGenerator, ZMSimpleListRequestPaginatorSync {
+private var exLog = ExLog(tag: "NotificationStreamSync")
+
+public class NotificationStreamSync: NSObject, ZMRequestGenerator, ZMSingleRequestTranscoder {
     
-    private var notificationsTracker: NotificationsTracker?
-    private var listPaginator: ZMSimpleListRequestPaginator!
-    private var managedObjectContext: NSManagedObjectContext!
-    private var notificationStreamSyncDelegate: NotificationStreamSyncDelegate?
-    private var lastUpdateEventID: UUID?
+    public var fetchNotificationSync: ZMSingleRequestSync!
+    private unowned var managedObjectContext: NSManagedObjectContext!
+    private weak var notificationStreamSyncDelegate: NotificationStreamSyncDelegate?
+    private var accountIdentifier: UUID
+    
+    deinit {
+        print("NotificationStreamSync deinit")
+    }
 
     public init(moc: NSManagedObjectContext,
-                notificationsTracker: NotificationsTracker?,
-                delegate: NotificationStreamSyncDelegate) {
+                delegate: NotificationStreamSyncDelegate,
+                accountid: UUID) {
+        accountIdentifier = accountid
         super.init()
         managedObjectContext = moc
-        listPaginator = ZMSimpleListRequestPaginator.init(basePath: "/notifications",
-                                                          startKey: "since",
-                                                          pageSize: 500,
-                                                          managedObjectContext: moc,
-                                                          includeClientID: true,
-                                                          transcoder: self)
-        listPaginator.resetFetching()
-        self.notificationsTracker = notificationsTracker
+        fetchNotificationSync = ZMSingleRequestSync(singleRequestTranscoder: self, groupQueue: moc)
+        fetchNotificationSync.readyForNextRequest()
         notificationStreamSyncDelegate = delegate
-        lastUpdateEventID = self.managedObjectContext.zm_lastNotificationID
     }
     
     public func nextRequest() -> ZMTransportRequest? {
-        
-        if listPaginator.status == ZMSingleRequestProgress.inProgress {
+        return fetchNotificationSync.nextRequest()
+    }
+    
+    public func request(for sync: ZMSingleRequestSync) -> ZMTransportRequest? {
+        let clientIdentifier = ZMUser.selfUser(in: self.managedObjectContext).selfClient()?.remoteIdentifier
+        guard let cid = clientIdentifier else {return nil}
+        var queryItems = [URLQueryItem]()
+        let sizeItem = URLQueryItem(name: "size", value: "50")
+        var startKeyItem: URLQueryItem?
+        if let lastEventId = AppGroupInfo.instance.sharedUserDefaults.value(forKey: lastUpdateEventIDKey + self.accountIdentifier.transportString()) as? String {
+            startKeyItem = URLQueryItem(name: "since", value: lastEventId)
+            exLog.info("request for sync eventId:\(lastEventId)")
+        } else {
+            exLog.info("can't create request for sync that no lastEventId")
             return nil
         }
-        
-        guard let request = listPaginator.nextRequest() else {
-            return nil
+        let cidItem = URLQueryItem(name: "client", value: cid)
+        if let startItem = startKeyItem {
+            queryItems.append(startItem)
         }
-        request.forceToVoipSession()
-        notificationsTracker?.registerStartStreamFetching()
-        request.add(ZMCompletionHandler(on: self.managedObjectContext, block: { (response) in
-            self.notificationsTracker?.registerFinishStreamFetching()
-        }))
-
+        queryItems.append(sizeItem)
+        queryItems.append(cidItem)
+        var components = URLComponents(string: "/notifications/user")
+        components?.queryItems = queryItems
+        guard let compString = components?.string else {return nil}
+        let request = ZMTransportRequest(getFromPath: compString)
+        exLog.info("generate new stream request \(request)")
         return request
     }
     
-//    private var lastUpdateEventID: UUID? {
-//        return self.managedObjectContext.zm_lastNotificationID
-//    }
-    
-    @objc(nextUUIDFromResponse:forListPaginator:)
-    public func nextUUID(from response: ZMTransportResponse!, forListPaginator paginator: ZMSimpleListRequestPaginator!) -> UUID! {
-        print(response)
+    public func didReceive(_ response: ZMTransportResponse, forSingleRequest sync: ZMSingleRequestSync) {
         if let timestamp = response.payload?.asDictionary()?["time"] {
             updateServerTimeDeltaWith(timestamp: timestamp as! String)
         }
-        let latestEventId1 = processUpdateEventsAndReturnLastNotificationID(from: response.payload)
-        
-        if latestEventId1 != nil && response.httpStatus != 404 {
-            return latestEventId1
-        } else {
-            self.lastUpdateEventID = latestEventId1
-        }
-        
-        appendPotentialGapSystemMessageIfNeeded(with: response)
-        return lastUpdateEventID
+        processUpdateEvents(from: response.payload)
     }
     
-    @objc(processUpdateEventsAndReturnLastNotificationIDFromPayload:)
-    func processUpdateEventsAndReturnLastNotificationID(from payload: ZMTransportData?) -> UUID? {
-        
-        let tp = ZMSTimePoint.init(interval: 10, label: NSStringFromClass(type(of: self)))
-        
-        var latestEventId: UUID? = nil
+    @objc(processUpdateEventsFromPayload:)
+    func processUpdateEvents(from payload: ZMTransportData?) {
         let source = ZMUpdateEventSource.pushNotification
-        
         guard let eventsDictionaries = eventDictionariesFrom(payload: payload) else {
-            return nil
+            return
         }
         var pEvents: [ZMUpdateEvent] = []
         for eventDictionary in eventsDictionaries {
             guard let events = ZMUpdateEvent.eventsArray(from: eventDictionary as ZMTransportData, source: source) else {
-                return nil
+                return
             }
             pEvents.append(contentsOf: events)
         }
-        notificationStreamSyncDelegate?.fetchedEvents(pEvents, hasMoreToFetch: !self.listPaginator.hasMoreToFetch)
-        latestEventId = pEvents.last(where: { !$0.isTransient })?.uuid
-        
-        //        ZMLogWithLevelAndTag(ZMLogLevelInfo, ZMTAG_EVENT_PROCESSING, @"Downloaded %lu event(s)", (unsigned long)parsedEvents.count);
-        if let lid = latestEventId {
-            self.managedObjectContext.zm_lastNotificationID = lid
-            print("lid------\(lid)")
-            self.managedObjectContext.saveOrRollback()
-        }
-        tp?.warnIfLongerThanInterval()
-        return latestEventId
-    }
-    
-    @objc(shouldParseErrorForResponse:)
-    public func shouldParseError(for response: ZMTransportResponse) -> Bool {
-        notificationStreamSyncDelegate?.failedFetchingEvents()
-        return response.httpStatus == 404 ? true : false
-    }
-    
-    @objc(appendPotentialGapSystemMessageIfNeededWithResponse:)
-    func appendPotentialGapSystemMessageIfNeeded(with response: ZMTransportResponse) {
-        // A 404 by the BE means we can't get all notifications as they are not stored anymore
-        // and we want to issue a system message. We still might have a payload with notifications that are newer
-        // than the commissioning time, the system message should be inserted between the old messages and the potentional
-        // newly received ones in the payload.
-        
-        if response.httpStatus == 404 {
-            var timestamp: Date? = nil
-            let offset = 0.1
-            
-            if let eventsDictionaries = eventDictionariesFrom(payload: response.payload),
-                let firstEvent = eventsDictionaries.first  {
-                
-                let event = ZMUpdateEvent.eventsArray(fromPushChannelData: firstEvent as ZMTransportData)?.first
-                // In case we receive a payload together with the 404 we set the timestamp of the system message
-                // to be 1/10th of a second older than the oldest received notification for it to appear above it.
-                
-                timestamp = event?.timeStamp()?.addingTimeInterval(-offset)
-            }
-            ZMConversation.appendNewPotentialGapSystemMessage(at: timestamp, inContext: self.managedObjectContext)
-        }
-    }
-    
-    public func startUUID() -> UUID! {
-        return self.managedObjectContext.zm_lastNotificationID
+        notificationStreamSyncDelegate?.fetchedEvents(pEvents)
     }
 }
 

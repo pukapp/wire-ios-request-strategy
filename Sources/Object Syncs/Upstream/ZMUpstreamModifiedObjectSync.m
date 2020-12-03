@@ -267,7 +267,7 @@ ZM_EMPTY_ASSERTING_INIT();
     
     ZM_WEAK(self);
     ZM_WEAK(request);
-    [request.transportRequest addCompletionHandler:[ZMCompletionHandler handlerOnGroupQueue:self.context block:^(ZMTransportResponse *response) {
+    [request.transportRequest addCompletionHandler:[ZMCompletionHandler handlerOnGroupQueue: objectWithKeys.object.managedObjectContext block:^(ZMTransportResponse *response) {
         ZM_STRONG(self);
         ZM_STRONG(request);
         

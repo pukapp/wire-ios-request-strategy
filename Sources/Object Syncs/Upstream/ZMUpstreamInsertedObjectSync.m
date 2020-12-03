@@ -235,7 +235,7 @@ static NSString* ZMLogTag = @"Network";
 
     ZM_WEAK(self);
     ZM_WEAK(request);
-    [request.transportRequest addCompletionHandler:[ZMCompletionHandler handlerOnGroupQueue:self.context block:^(ZMTransportResponse *response) {
+    [request.transportRequest addCompletionHandler:[ZMCompletionHandler handlerOnGroupQueue:nextObject.managedObjectContext block:^(ZMTransportResponse *response) {
         ZM_STRONG(self);
         ZM_STRONG(request);
         
@@ -263,7 +263,7 @@ static NSString* ZMLogTag = @"Network";
             }
             
             if (!shouldResyncObject) {
-                [self.context deleteObject:nextObject];
+                [nextObject.managedObjectContext deleteObject:nextObject];
             }
         }
         else if (response.result == ZMTransportResponseStatusTryAgainLater) {
@@ -281,7 +281,7 @@ static NSString* ZMLogTag = @"Network";
             [self.insertedObjects didFailSynchronizingObject:nextObject];
         }
         
-        [self.context enqueueDelayedSaveWithGroup:response.dispatchGroup];
+        [nextObject.managedObjectContext enqueueDelayedSaveWithGroup:response.dispatchGroup];
     }]];
     
     return request.transportRequest;

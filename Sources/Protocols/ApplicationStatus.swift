@@ -50,6 +50,8 @@ public protocol ApplicationStatus : class {
 
     var notificationFetchStatus: BackgroundNotificationFetchStatus { get }
     
+    var notificationHugeFetchStatus: BackgroundNotificationFetchStatus { get }
+    
     func requestSlowSync()
 
 }

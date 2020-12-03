@@ -52,6 +52,7 @@ public final class MissingClientsRequestStrategy: AbstractRequestStrategy, ZMUps
         super.init(withManagedObjectContext: managedObjectContext, applicationStatus: applicationStatus)
         
         self.configuration =  [
+            .allowsRequestsDuringSync,
             .allowsRequestsDuringEventProcessing,
             .allowsRequestsWhileInBackground,
             .allowsRequestsDuringNotificationStreamFetch
@@ -110,9 +111,6 @@ public final class MissingClientsRequestStrategy: AbstractRequestStrategy, ZMUps
         else { fatal("no missing clients found") }
         
         let request = requestsFactory.fetchMissingClientKeysRequest(missing)
-        if let delegate = applicationStatus?.deliveryConfirmation, delegate.needsToSyncMessages {
-            request?.transportRequest.forceToVoipSession()
-        }
         return request
     }
     
@@ -208,6 +206,8 @@ public final class MissingClientsRequestStrategy: AbstractRequestStrategy, ZMUps
         _ managedObject: ZMManagedObject!,
         requestUserInfo: [AnyHashable: Any]!,
         responsePayload payload: ZMTransportData!) -> Bool {
+        
+        guard let managedObjectContext = managedObject.managedObjectContext else {return false}
         
         guard let dictionary = payload.asDictionary() as? [String : [String : AnyObject]],
             let selfClient = ZMUser.selfUser(in: managedObjectContext).selfClient()
