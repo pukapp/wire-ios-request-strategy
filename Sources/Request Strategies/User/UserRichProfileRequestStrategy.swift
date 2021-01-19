@@ -26,7 +26,7 @@ public class UserRichProfileRequestStrategy : AbstractRequestStrategy {
     var modifiedSync: ZMDownstreamObjectSync!
     
     override public init(withManagedObjectContext managedObjectContext: NSManagedObjectContext,
-                         applicationStatus: ApplicationStatus) {
+                         applicationStatus: ApplicationStatus?) {
         
         super.init(withManagedObjectContext: managedObjectContext, applicationStatus: applicationStatus)
         

@@ -27,7 +27,7 @@ public final class AssetV3UploadRequestStrategy: AbstractRequestStrategy, ZMCont
     internal var upstreamSync: ZMUpstreamModifiedObjectSync!
     internal var preprocessor: AssetsPreprocessor
     
-    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus) {
+    public override init(withManagedObjectContext managedObjectContext: NSManagedObjectContext, applicationStatus: ApplicationStatus?) {
         preprocessor = AssetsPreprocessor(managedObjectContext: managedObjectContext)
         
         super.init(withManagedObjectContext: managedObjectContext, applicationStatus: applicationStatus)
