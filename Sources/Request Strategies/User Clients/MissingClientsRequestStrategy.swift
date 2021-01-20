@@ -120,7 +120,8 @@ public final class MissingClientsRequestStrategy: AbstractRequestStrategy, ZMUps
         if keysToParse.contains(ZMUserClientMissingKey) {
             return processResponseForUpdatingMissingClients(managedObject, requestUserInfo: requestUserInfo, responsePayload: response.payload)
         } else {
-            fatal("We only expect request about missing clients")
+            zmLog.debug("We only expect request about missing clients")
+            return false
         }
     }
     
