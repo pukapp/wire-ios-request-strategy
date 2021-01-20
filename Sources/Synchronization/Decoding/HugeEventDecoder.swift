@@ -20,20 +20,17 @@ import Foundation
 import WireCryptobox
 import WireDataModel
 
-private let zmLog = ZMSLog(tag: "EventDecoder")
+private let zmLog = ZMSLog(tag: "HugeEventDecoder")
 
 /// Key used in persistent store metadata
-private let previouslyReceivedEventIDsKey = "zm_previouslyReceivedEventIDsKey"
+private let previouslyReceivedHugeEventIDsKey = "zm_previouslyReceivedHugeEventIDsKey"
 
 /// Decodes and stores events from various sources to be processed later
-@objcMembers public final class EventDecoder: NSObject {
+@objcMembers public final class HugeEventDecoder: NSObject {
     
     public typealias ConsumeBlock = (([ZMUpdateEvent]) -> Void)
     
     static var BatchSize : Int {
-        if let testingBatchSize = testingBatchSize {
-            return testingBatchSize
-        }
         return 500
     }
     
@@ -44,7 +41,7 @@ private let previouslyReceivedEventIDsKey = "zm_previouslyReceivedEventIDsKey"
     unowned let syncMOC: NSManagedObjectContext
     private let userDefault: UserDefaults?
     
-    fileprivate typealias EventsWithStoredEvents = (storedEvents: [StoredUpdateEvent], updateEvents: [ZMUpdateEvent])
+    fileprivate typealias EventsWithStoredEvents = (storedEvents: [StoredHugeUpdateEvent], updateEvents: [ZMUpdateEvent])
     
     public init(eventMOC: NSManagedObjectContext, syncMOC: NSManagedObjectContext) {
         self.eventMOC = eventMOC
@@ -53,13 +50,13 @@ private let previouslyReceivedEventIDsKey = "zm_previouslyReceivedEventIDsKey"
         self.userDefault = UserDefaults(suiteName: groupIdentifier)
         super.init()
         self.eventMOC.performGroupedBlockAndWait {
-            self.createReceivedPushEventIDsStoreIfNecessary()
+            self.createReceivedHugePushEventIDsStoreIfNecessary()
         }
     }
 }
 
 // MARK: - Process events
-extension EventDecoder {
+extension HugeEventDecoder {
     
     /// Decrypts passed in events and stores them in chronological order in a persisted database. It then saves the database and cryptobox
     /// It then calls the passed in block (multiple times if necessary), returning the decrypted events
@@ -73,7 +70,7 @@ extension EventDecoder {
             self.storeReceivedPushEventIDs(from: events)
             
             // Get the highest index of events in the DB
-            lastIndex = StoredUpdateEvent.highestIndex(self.eventMOC)
+            lastIndex = StoredHugeUpdateEvent.highestIndex(self.eventMOC)
             
             guard let index = lastIndex else { return }
             self.storeEvents(filteredEvents, startingAtIndex: index)
@@ -92,29 +89,14 @@ extension EventDecoder {
     /// - parameter events The new events that should be decrypted and stored in the database.
     /// - parameter startingAtIndex The startIndex to be used for the incrementing sortIndex of the stored events.
     fileprivate func storeEvents(_ events: [ZMUpdateEvent], startingAtIndex startIndex: Int64) {
-        syncMOC.zm_cryptKeyStore.encryptionContext.perform { [weak self] (sessionsDirectory) -> Void in
-            guard let `self` = self else { return }
-            print("OriginEvents.count \(events.count)")
-            let newUpdateEvents = events.compactMap { event -> ZMUpdateEvent? in
-                if event.type == .conversationOtrMessageAdd || event.type == .conversationOtrAssetAdd {
-                    return sessionsDirectory.decryptAndAddClient(event, in: self.syncMOC)
-                } else {
-                    return event
-                }
+        self.eventMOC.performGroupedBlockAndWait {
+            // Insert the decryted events in the event database using a `storeIndex`
+            // incrementing from the highest index currently stored in the database
+            for (idx, event) in events.enumerated() {
+                _ = StoredUpdateEvent.create(event, managedObjectContext: self.eventMOC, index: Int64(idx) + startIndex + 1)
             }
-            print("NewUpdateEvents.count \(newUpdateEvents.count), NewUpdateEvents  \(String(describing: newUpdateEvents.first?.description))")
-            // This call has to be synchronous to ensure that we close the
-            // encryption context only if we stored all events in the database
-            self.eventMOC.performGroupedBlockAndWait {
-                
-                // Insert the decryted events in the event database using a `storeIndex`
-                // incrementing from the highest index currently stored in the database
-                for (idx, event) in newUpdateEvents.enumerated() {
-                    _ = StoredUpdateEvent.create(event, managedObjectContext: self.eventMOC, index: Int64(idx) + startIndex + 1)
-                }
-                
-                self.eventMOC.saveOrRollback()
-            }
+            
+            self.eventMOC.saveOrRollback()
         }
     }
     
@@ -153,11 +135,11 @@ extension EventDecoder {
     /// Fetches and returns the next batch of size `EventDecoder.BatchSize`
     /// of `StoredEvents` and `ZMUpdateEvent`'s in a `EventsWithStoredEvents` tuple.
     private func fetchNextEventsBatch() -> EventsWithStoredEvents {
-        var (storedEvents, updateEvents)  = ([StoredUpdateEvent](), [ZMUpdateEvent]())
+        var (storedEvents, updateEvents)  = ([StoredHugeUpdateEvent](), [ZMUpdateEvent]())
 
         eventMOC.performGroupedBlockAndWait {
-            storedEvents = StoredUpdateEvent.nextEvents(self.eventMOC, batchSize: EventDecoder.BatchSize)
-            updateEvents = StoredUpdateEvent.eventsFromStoredEvents(storedEvents)
+            storedEvents = StoredHugeUpdateEvent.nextEvents(self.eventMOC, batchSize: HugeEventDecoder.BatchSize)
+            updateEvents = StoredHugeUpdateEvent.eventsFromStoredEvents(storedEvents)
         }
         return (storedEvents: storedEvents, updateEvents: updateEvents)
     }
@@ -165,25 +147,25 @@ extension EventDecoder {
 }
 
 // MARK: - List of already received event IDs
-extension EventDecoder {
+extension HugeEventDecoder {
     
     /// create event ID store if needed
-    fileprivate func createReceivedPushEventIDsStoreIfNecessary() {
-        if self.eventMOC.persistentStoreMetadata(forKey: previouslyReceivedEventIDsKey) as? [String] == nil {
-            self.eventMOC.setPersistentStoreMetadata(array: [String](), key: previouslyReceivedEventIDsKey)
+    fileprivate func createReceivedHugePushEventIDsStoreIfNecessary() {
+        if self.eventMOC.persistentStoreMetadata(forKey: previouslyReceivedHugeEventIDsKey) as? [String] == nil {
+            self.eventMOC.setPersistentStoreMetadata(array: [String](), key: previouslyReceivedHugeEventIDsKey)
         }
     }
     
     
     /// List of already received event IDs
-    fileprivate var alreadyReceivedPushEventIDs : Set<UUID> {
-        let array = self.eventMOC.persistentStoreMetadata(forKey: previouslyReceivedEventIDsKey) as! [String]
+    fileprivate var alreadyReceivedHugePushEventIDs : Set<UUID> {
+        let array = self.eventMOC.persistentStoreMetadata(forKey: previouslyReceivedHugeEventIDsKey) as! [String]
         return Set(array.compactMap { UUID(uuidString: $0) })
     }
     
     /// List of already received event IDs as strings
     fileprivate var alreadyReceivedPushEventIDsStrings : Set<String> {
-        return Set(self.eventMOC.persistentStoreMetadata(forKey: previouslyReceivedEventIDsKey) as! [String])
+        return Set(self.eventMOC.persistentStoreMetadata(forKey: previouslyReceivedHugeEventIDsKey) as! [String])
     }
     
     /// Store received event IDs
@@ -195,13 +177,13 @@ extension EventDecoder {
             .map { $0.transportString() }
         let allUuidStrings = self.alreadyReceivedPushEventIDsStrings.union(uuidToAdd)
         
-        self.eventMOC.setPersistentStoreMetadata(array: Array(allUuidStrings), key: previouslyReceivedEventIDsKey)
+        self.eventMOC.setPersistentStoreMetadata(array: Array(allUuidStrings), key: previouslyReceivedHugeEventIDsKey)
     }
     
     /// Filters out events that have been received before
     /// 过滤消息时考虑上次没处理完的情况（来自downland），避免重复保存的通知事件
     fileprivate func filterAlreadyReceivedEvents(from: [ZMUpdateEvent]) -> [ZMUpdateEvent] {
-        let eventIDsToDiscard = self.alreadyReceivedPushEventIDs
+        let eventIDsToDiscard = self.alreadyReceivedHugePushEventIDs
         return from.compactMap { event -> ZMUpdateEvent? in
             if /*event.source != .pushNotification, */let uuid = event.uuid {
                 return eventIDsToDiscard.contains(uuid) ? nil : event
@@ -227,17 +209,16 @@ extension EventDecoder {
     }
 }
 
-@objc extension EventDecoder: PreviouslyReceivedEventIDsCollection {
+@objc extension HugeEventDecoder: PreviouslyReceivedEventIDsCollection {
     
-    public func discardListOfAlreadyReceivedHugePushEventIDs() {
+    public func discardListOfAlreadyReceivedPushEventIDs() {
         
     }
 
     /// Discards the list of already received events
-    public func discardListOfAlreadyReceivedPushEventIDs() {
+    public func discardListOfAlreadyReceivedHugePushEventIDs() {
         self.eventMOC.performGroupedBlockAndWait {
-            self.eventMOC.setPersistentStoreMetadata(array: [String](), key: previouslyReceivedEventIDsKey)
+            self.eventMOC.setPersistentStoreMetadata(array: [String](), key: previouslyReceivedHugeEventIDsKey)
         }
     }
-    
 }

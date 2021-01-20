@@ -109,6 +109,8 @@
 		A030790A24D81283008D2561 /* NSManagedObjectContext+EventDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A030790424D81283008D2561 /* NSManagedObjectContext+EventDecoder.swift */; };
 		A030790B24D81283008D2561 /* StoreUpdateEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A030790524D81283008D2561 /* StoreUpdateEvent.swift */; };
 		A030790C24D81283008D2561 /* EventDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A030790624D81283008D2561 /* EventDecoder.swift */; };
+		A044144F25B81B3E008DFF8A /* HugeEventDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A044144E25B81B3E008DFF8A /* HugeEventDecoder.swift */; };
+		A044145325B81BDE008DFF8A /* StoreHugeUpdateEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A044145225B81BDE008DFF8A /* StoreHugeUpdateEvent.swift */; };
 		A093F03D2554FA2A00DC9823 /* PushHugeNotificationStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = A093F03C2554FA2A00DC9823 /* PushHugeNotificationStatus.swift */; };
 		A09BA2532512139F003DE145 /* NotificationSingleSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = A09BA2522512139F003DE145 /* NotificationSingleSync.swift */; };
 		A0DA4ADA25147D8800B3E17F /* EventDecrypter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0DA4AD925147D8800B3E17F /* EventDecrypter.swift */; };
@@ -365,6 +367,9 @@
 		A030790424D81283008D2561 /* NSManagedObjectContext+EventDecoder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "NSManagedObjectContext+EventDecoder.swift"; sourceTree = "<group>"; };
 		A030790524D81283008D2561 /* StoreUpdateEvent.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StoreUpdateEvent.swift; sourceTree = "<group>"; };
 		A030790624D81283008D2561 /* EventDecoder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = EventDecoder.swift; sourceTree = "<group>"; };
+		A044144E25B81B3E008DFF8A /* HugeEventDecoder.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = HugeEventDecoder.swift; sourceTree = "<group>"; };
+		A044145225B81BDE008DFF8A /* StoreHugeUpdateEvent.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StoreHugeUpdateEvent.swift; sourceTree = "<group>"; };
+		A044145825B829EC008DFF8A /* ZMEventModel1.1.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = ZMEventModel1.1.xcdatamodel; sourceTree = "<group>"; };
 		A093F03C2554FA2A00DC9823 /* PushHugeNotificationStatus.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PushHugeNotificationStatus.swift; sourceTree = "<group>"; };
 		A09BA2522512139F003DE145 /* NotificationSingleSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSingleSync.swift; sourceTree = "<group>"; };
 		A0DA4AD925147D8800B3E17F /* EventDecrypter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventDecrypter.swift; sourceTree = "<group>"; };
@@ -657,10 +662,12 @@
 		A030790024D81259008D2561 /* Decoding */ = {
 			isa = PBXGroup;
 			children = (
-				A0DA4AD925147D8800B3E17F /* EventDecrypter.swift */,
+				A044144E25B81B3E008DFF8A /* HugeEventDecoder.swift */,
 				A030790624D81283008D2561 /* EventDecoder.swift */,
+				A0DA4AD925147D8800B3E17F /* EventDecrypter.swift */,
 				A030790424D81283008D2561 /* NSManagedObjectContext+EventDecoder.swift */,
 				A030790524D81283008D2561 /* StoreUpdateEvent.swift */,
+				A044145225B81BDE008DFF8A /* StoreHugeUpdateEvent.swift */,
 				A030790124D81283008D2561 /* ZMEventModel.xcdatamodeld */,
 			);
 			path = Decoding;
@@ -1213,6 +1220,7 @@
 				F18401CD2073BE0800E9F4CC /* LinkPreviewPreprocessor.swift in Sources */,
 				166901DB1D7081C7000FE4AF /* ZMLocallyModifiedObjectSet.m in Sources */,
 				8792F55721AD944100795027 /* UserPropertyRequestStrategy.swift in Sources */,
+				A044144F25B81B3E008DFF8A /* HugeEventDecoder.swift in Sources */,
 				F18401A92073BE0800E9F4CC /* MissingClientsRequestFactory.swift in Sources */,
 				F18401AD2073BE0800E9F4CC /* ZMOTRMessage+Missing.swift in Sources */,
 				166901F01D7081C7000FE4AF /* ZMUpstreamInsertedObjectSync.m in Sources */,
@@ -1262,6 +1270,7 @@
 				547D47171E7C1B0D002EEA15 /* DependentObjects.swift in Sources */,
 				F18401AF2073BE0800E9F4CC /* AvailabilityRequestStrategy.swift in Sources */,
 				F18401D12073BE0800E9F4CC /* ApplicationStatus.swift in Sources */,
+				A044145325B81BDE008DFF8A /* StoreHugeUpdateEvent.swift in Sources */,
 				F18401D32073BE0800E9F4CC /* ZMMessage+Dependency.swift in Sources */,
 				D5D65A072074C23D00D7F3C3 /* AssetRequestFactory.swift in Sources */,
 				166901E61D7081C7000FE4AF /* ZMSyncOperationSet.m in Sources */,
@@ -1497,9 +1506,10 @@
 		A030790124D81283008D2561 /* ZMEventModel.xcdatamodeld */ = {
 			isa = XCVersionGroup;
 			children = (
+				A044145825B829EC008DFF8A /* ZMEventModel1.1.xcdatamodel */,
 				A030790224D81283008D2561 /* ZMEventModel.xcdatamodel */,
 			);
-			currentVersion = A030790224D81283008D2561 /* ZMEventModel.xcdatamodel */;
+			currentVersion = A044145825B829EC008DFF8A /* ZMEventModel1.1.xcdatamodel */;
 			path = ZMEventModel.xcdatamodeld;
 			sourceTree = "<group>";
 			versionGroupType = wrapper.xcdatamodel;

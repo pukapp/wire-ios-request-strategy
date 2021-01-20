@@ -22,6 +22,7 @@ import Foundation
 @objc
 public protocol PreviouslyReceivedEventIDsCollection: NSObjectProtocol {
     func discardListOfAlreadyReceivedPushEventIDs()
+    func discardListOfAlreadyReceivedHugePushEventIDs()
 }
 
 @objc

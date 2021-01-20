@@ -141,7 +141,7 @@ import Foundation
                        .appendingPathComponent(userIdentifier.uuidString, isDirectory:true)
                        .appendingPathComponent("events", isDirectory:true)
         
-        let storeFileName = "ZMEventModel.sqlite"
+        let storeFileName = "ZMEventModel1.1.sqlite"
         return storeURL.appendingPathComponent(storeFileName, isDirectory: false)
     }
 }
