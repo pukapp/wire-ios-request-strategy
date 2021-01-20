@@ -48,7 +48,9 @@ public class ClientMessageTranscoder: AbstractRequestStrategy {
              .allowsRequestsDuringEventProcessing,.allowsRequestsWhileInBackground,
                     .allowsRequestsDuringNotificationStreamFetch]
         self.upstreamObjectSync = ZMUpstreamInsertedObjectSync(transcoder: self, entityName: ZMClientMessage.entityName(), filter: ClientMessageTranscoder.insertFilter, managedObjectContext: moc)
-        self.deleteOldEphemeralMessages()
+        if moc.zm_isSyncContext {
+            self.deleteOldEphemeralMessages()
+        }
     }
     
     deinit {
