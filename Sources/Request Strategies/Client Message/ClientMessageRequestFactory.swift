@@ -31,7 +31,7 @@ public final class ClientMessageRequestFactory: NSObject {
     
     public func upstreamRequestForFetchingClients(conversationId: UUID, selfClient: UserClient) -> ZMTransportRequest? {
         let originalPath = "/" + ["conversations", conversationId.transportString(), "otr", "messages"].joined(separator: "/")
-        let newOtrMessage = ZMNewOtrMessage.message(withSender: selfClient, nativePush: false, recipients: [])
+        let newOtrMessage = ZMNewOtrMessage.message(withSender: selfClient, nativePush: false, recipients: [], voipString: nil)
         let path = originalPath.pathWithMissingClientStrategy(strategy: .doNotIgnoreAnyMissingClient)
         let request = ZMTransportRequest(path: path, method: .methodPOST, binaryData: newOtrMessage.data(), type: protobufContentType, contentDisposition: nil)
         return request
