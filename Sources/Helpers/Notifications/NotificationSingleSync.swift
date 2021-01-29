@@ -42,7 +42,7 @@ public class NotificationSingleSync: NSObject, ZMRequestGenerator {
     }
     
     deinit {
-        print("NotificationSingleSync deinit")
+        exLog.info("NotificationSingleSync deinit")
     }
     
 }
