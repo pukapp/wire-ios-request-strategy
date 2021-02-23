@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="17709" systemVersion="20B50" minimumToolsVersion="Xcode 7.0" sourceLanguage="Objective-C" userDefinedModelVersionIdentifier="1.1">
-    <entity name="StoredHugeUpdateEvent" representedClassName="StoredUpdateEvent" syncable="YES">
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="17709" systemVersion="20D64" minimumToolsVersion="Xcode 7.0" sourceLanguage="Objective-C" userDefinedModelVersionIdentifier="1.1">
+    <entity name="StoredHugeUpdateEvent" representedClassName="StoredHugeUpdateEvent" syncable="YES">
         <attribute name="debugInformation" optional="YES" attributeType="String" syncable="YES"/>
         <attribute name="isTransient" optional="YES" attributeType="Boolean" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="payload" optional="YES" attributeType="Transformable" syncable="YES"/>
@@ -17,7 +17,7 @@
         <attribute name="uuidString" optional="YES" attributeType="String" syncable="YES"/>
     </entity>
     <elements>
-        <element name="StoredUpdateEvent" positionX="-54" positionY="-9" width="128" height="135"/>
         <element name="StoredHugeUpdateEvent" positionX="-36" positionY="63" width="128" height="119"/>
+        <element name="StoredUpdateEvent" positionX="-54" positionY="-9" width="128" height="135"/>
     </elements>
 </model>

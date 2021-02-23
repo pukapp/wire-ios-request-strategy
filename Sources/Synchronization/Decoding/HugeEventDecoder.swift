@@ -93,7 +93,7 @@ extension HugeEventDecoder {
             // Insert the decryted events in the event database using a `storeIndex`
             // incrementing from the highest index currently stored in the database
             for (idx, event) in events.enumerated() {
-                _ = StoredUpdateEvent.create(event, managedObjectContext: self.eventMOC, index: Int64(idx) + startIndex + 1)
+                _ = StoredHugeUpdateEvent.create(event, managedObjectContext: self.eventMOC, index: Int64(idx) + startIndex + 1)
             }
             
             self.eventMOC.saveOrRollback()
