@@ -98,7 +98,8 @@ static NSString* ZMLogTag = @"Network";
     //hot fix 不追踪本地已经存在的万人群消息
 //     || [self.transcoder isKindOfClass:[AssetClientMessageRequestStrategy class]]
     if ([self.transcoder isKindOfClass:[ClientMessageTranscoder class]]) {
-        request = [ZMMessage sortedFetchRequestWithPredicate:[NSCompoundPredicate andPredicateWithSubpredicates:@[self.insertPredicate]]];
+//        request = [ZMMessage sortedFetchRequestWithPredicate: ZMMessage.predicateForMessagesMayBeNeedResend];
+        request = [ZMMessage sortedFetchRequestWithPredicate: ZMMessage.predicateForMessagesMayBeNeedResend];
     } else {
         request = [moClass sortedFetchRequestWithPredicate:self.insertPredicate];
     }
