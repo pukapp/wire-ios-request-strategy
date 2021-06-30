@@ -58,6 +58,7 @@ public final class ClientMessageRequestFactory: NSObject {
         let path = originalPath.pathWithMissingClientStrategy(strategy: dataAndMissingClientStrategy.strategy)
         let request = ZMTransportRequest(path: path, method: .methodPOST, binaryData: dataAndMissingClientStrategy.data, type: protobufContentType, contentDisposition: nil)
         request.addContentDebugInformation(message.debugInfo)
+        request.priorityLevel = .highLevel
         return request
     }
 
@@ -69,6 +70,7 @@ public final class ClientMessageRequestFactory: NSObject {
         let path = originalPath.pathWithMissingClientStrategy(strategy: .doNotIgnoreAnyMissingClient)
         let request = ZMTransportRequest(path: path, method: .methodPOST, payload: payload as ZMTransportData)
         request.addContentDebugInformation(message.unencryptedMessageDebugInfo)
+        request.priorityLevel = .highLevel
         return request
     }
     
@@ -76,6 +78,7 @@ public final class ClientMessageRequestFactory: NSObject {
         let path = "/" + ["conversations", conversationId.transportString(), "otr", "assets", assetId].joined(separator: "/")
         let request = ZMTransportRequest.imageGet(fromPath: path)
         request.forceToBackgroundSession()
+        request.priorityLevel = .lowLevel
         return request
     }
     
@@ -90,6 +93,7 @@ extension ClientMessageRequestFactory {
         let request = ZMTransportRequest(getFromPath: path)
         request.addContentDebugInformation("Downloading file (Asset)\n\(String(describing: message.dataSetDebugInformation))")
         request.forceToBackgroundSession()
+        request.priorityLevel = .lowLevel
         return request
     }
 }
